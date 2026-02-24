@@ -8,6 +8,8 @@ import tarotRoutes from './routes/tarotRoutes.js';
 import numerologyRoutes from './routes/numerologyRoutes.js';
 import v1Routes from './routes/v1/index.js';
 import healthRoutes from './routes/healthRoutes.js';
+import { requestId } from './shared/http/requestId.js';
+import { errorHandler } from './shared/http/errorHandler.js';
 
 dotenv.config();
 
@@ -20,6 +22,7 @@ app.options('*', cors(corsOptions));
 
 // === 2. JSON ===
 app.use(express.json());
+app.use(requestId);
 
 // === 3. Rotas ===
 // Nota: O teu frontend está a chamar /api/v1/tarot/readings
@@ -27,6 +30,7 @@ app.use(express.json());
 app.use('/api/tarot', tarotRoutes);
 app.use('/api/numerology', numerologyRoutes);
 app.use('/api/v1', v1Routes);
+app.use('/api/v1/health', healthRoutes);
 app.use('/health', healthRoutes);
 
 // Rota Raiz
@@ -35,6 +39,8 @@ app.get('/', (req, res) => {
 });
 
 // Iniciar Servidor (0.0.0.0 é obrigatório para o Render)
+app.use(errorHandler);
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✨ Servidor rodando na porta ${PORT}`);
 });

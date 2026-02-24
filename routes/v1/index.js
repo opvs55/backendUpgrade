@@ -6,6 +6,9 @@ import oraclesRoutes from './oraclesRoutes.v1.js';
 import astrologyRoutes from './astrologyRoutes.v1.js';
 
 import unifiedRoutes from './unifiedRoutes.v1.js';
+import natalChartRoutes from '../natalChartRoutes.js';
+import oracleRoutes from '../oracleRoutes.js';
+import unifiedReadingRoutes from '../unifiedReadingRoutes.js';
 
 
 
@@ -17,6 +20,9 @@ router.use('/oracles', oraclesRoutes);
 router.use('/astrology', astrologyRoutes);
 
 router.use('/unified', unifiedRoutes);
+router.use('/natal-chart', natalChartRoutes);
+router.use('/oracles', oracleRoutes);
+router.use('/unified-readings', unifiedReadingRoutes);
 
 
 export default router;
