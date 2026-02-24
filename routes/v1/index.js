@@ -1,0 +1,22 @@
+// routes/v1/index.js
+import { Router } from 'express';
+import tarotRoutes from './tarotRoutes.v1.js';
+import numerologyRoutes from './numerologyRoutes.v1.js';
+import oraclesRoutes from './oraclesRoutes.v1.js';
+import astrologyRoutes from './astrologyRoutes.v1.js';
+
+import unifiedRoutes from './unifiedRoutes.v1.js';
+
+
+
+const router = Router();
+
+router.use('/tarot', tarotRoutes);
+router.use('/numerology', numerologyRoutes);
+router.use('/oracles', oraclesRoutes);
+router.use('/astrology', astrologyRoutes);
+
+router.use('/unified', unifiedRoutes);
+
+
+export default router;
