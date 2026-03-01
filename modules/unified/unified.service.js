@@ -5,7 +5,6 @@ import { extractJsonFromText } from '../../utils/llmResponse.js';
 import { withTimeout } from '../../shared/async/withTimeout.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
-import { generateNatalChartData } from '../astrology/natalChart.controller.js';
 import { generateRunesReadingData } from '../oracles/runes.controller.js';
 import { generateIchingReadingData } from '../oracles/iching.controller.js';
 import { parseNormalizedOutput, parseUnifiedOutput } from './unified.schema.js';
@@ -14,13 +13,6 @@ import { getUnifiedReadingsRepository } from './unified.repository.js';
 const repository = getUnifiedReadingsRepository();
 const MODULE_TIMEOUT_MS = Number(process.env.UNIFIED_MODULE_TIMEOUT_MS || 8000);
 
-const normalizeNatal = (data) => ({
-  themes: [data.headline, data.summary].filter(Boolean),
-  risk_flags: data.challenges || [],
-  strength_flags: data.strengths || [],
-  recommended_actions: data.guidance ? [data.guidance] : [],
-});
-
 const normalizeGeneric = (data) => ({
   themes: data.themes || [],
   risk_flags: [],
@@ -28,11 +20,11 @@ const normalizeGeneric = (data) => ({
   recommended_actions: data.recommended_actions || [],
 });
 
-const normalizeModule = (module, data) => {
+const normalizeModule = (_, data) => {
   if (!data) {
     return parseNormalizedOutput({ themes: [], risk_flags: [], strength_flags: [], recommended_actions: [] });
   }
-  return parseNormalizedOutput(module === 'natal' ? normalizeNatal(data) : normalizeGeneric(data));
+  return parseNormalizedOutput(normalizeGeneric(data));
 };
 
 const warningFromError = (module, error) => ({
@@ -83,7 +75,6 @@ SAÍDA EXATA:
 
 export const createUnifiedReading = async ({ payload }) => {
   const tasks = [
-    ['natal', () => withTimeout(generateNatalChartData(payload.natalInput), MODULE_TIMEOUT_MS, 'natal')],
     ['runes', () => withTimeout(generateRunesReadingData(payload.runesInput), MODULE_TIMEOUT_MS, 'runes')],
     ['iching', () => withTimeout(generateIchingReadingData(payload.ichingInput), MODULE_TIMEOUT_MS, 'iching')],
   ];
@@ -106,7 +97,6 @@ export const createUnifiedReading = async ({ payload }) => {
   });
 
   const normalized = {
-    natal: normalizeModule('natal', modules.natal),
     runes: normalizeModule('runes', modules.runes),
     iching: normalizeModule('iching', modules.iching),
   };

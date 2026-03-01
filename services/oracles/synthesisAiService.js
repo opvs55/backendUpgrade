@@ -1,13 +1,13 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 
 const fallbackReading = ({ focusArea, question, sourcesUsed }) => ({
-  title: 'Leitura geral (modo seguro)',
-  overview: 'Com base nos seus dados disponíveis, esta semana pede constância e ajustes conscientes.',
-  strengths: ['Clareza gradual', 'Boa capacidade de adaptação'],
-  cautions: ['Evite decisões por impulso', 'Respeite seu ritmo energético'],
-  guidance: ['Defina 1 prioridade por dia', 'Revise metas de curto prazo no fim da semana'],
-  focus: focusArea || 'general',
-  closing_message: question ? `Pergunta considerada: ${question}` : 'Siga com presença e intencionalidade.',
+  title: 'Oráculo do Grimório (semanal)',
+  overview: 'Esta semana pede foco prático, constância emocional e decisões conscientes.',
+  strengths: ['Clareza na priorização', 'Capacidade de adaptação com propósito'],
+  cautions: ['Evite dispersar energia em muitas frentes', 'Não adie conversas importantes'],
+  guidance: ['Defina um objetivo semanal principal', 'Revise diariamente pequenos avanços'],
+  focus: focusArea || 'geral',
+  closing_message: question ? `Pergunta considerada: ${question}` : 'Use esta leitura como bússola de autoconhecimento para a semana.',
   sources_used: sourcesUsed,
 });
 
@@ -16,7 +16,9 @@ export const generateSynthesis = async ({ context, focusArea, question, sourcesU
     return fallbackReading({ focusArea, question, sourcesUsed });
   }
 
-  const prompt = `Retorne APENAS JSON válido para uma leitura geral em pt-BR.
+  const prompt = `Retorne APENAS JSON válido para o "Oráculo do Grimório" semanal em pt-BR.
+Integre Tarot semanal + Numerologia base/semanal + Runas semanais + I Ching semanal + histórico recente de Tarot.
+Evite fatalismo e seja prático.
 Contexto: ${JSON.stringify(context)}
 Estrutura:
 {
@@ -27,7 +29,7 @@ Estrutura:
   "guidance":["string"],
   "focus":"string",
   "closing_message":"string",
-  "sources_used":["profile","natal_chart","numerology","weekly_card"]
+  "sources_used":["tarot_weekly","numerology_base","numerology_weekly","runes_weekly","iching_weekly","tarot_history_summary"]
 }`;
 
   try {

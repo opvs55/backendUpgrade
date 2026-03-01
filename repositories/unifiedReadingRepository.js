@@ -10,6 +10,32 @@ export const createUnifiedReading = async (payload) => {
   return data;
 };
 
+export const updateUnifiedReadingById = async (id, payload) => {
+  const { data, error } = await supabaseAnonClient
+    .from('unified_readings')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUnifiedReadingByUserAndWeekStart = async (userId, weekStart) => {
+  const { data, error } = await supabaseAnonClient
+    .from('unified_readings')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
 export const listUnifiedReadingsByUser = async (userId, limit = 20, offset = 0) => {
   const { data, error } = await supabaseAnonClient
     .from('unified_readings')

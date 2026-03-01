@@ -9,7 +9,7 @@ export const generateWeeklyOracleReading = async (req, res) => {
       return res.status(400).json({ error: 'Payload JSON é obrigatório.' });
     }
 
-    const requiredKeys = ['user', 'week_ref', 'focus_area', 'tarot', 'numerology', 'astrology', 'history_hint'];
+    const requiredKeys = ['user', 'week_ref', 'focus_area', 'tarot', 'numerology', 'history_hint'];
     const missingKeys = requiredKeys.filter((key) => !(key in inputPayload));
     if (missingKeys.length > 0) {
       return res.status(400).json({
@@ -35,7 +35,7 @@ CONTEXTO DO PRODUTO
 - O usuário vê um painel semanal com:
   1) Carta da Semana (tarot)
   2) Número da Semana (numerologia)
-  3) Tema Astral da Semana
+  3) Histórico recente do usuário
   4) Recomendação prática do dia
 - A leitura deve integrar esses sinais num texto coerente.
 
@@ -43,13 +43,13 @@ ENTRADA (JSON)
 ${serializedPayload}
 
 TAREFA
-1) Integrar tarot + numerologia + tema astral em uma interpretação única.
+1) Integrar tarot + numerologia + histórico em uma interpretação única.
 2) Produzir resumo curto para card e versão completa para tela detalhada.
 3) Produzir 1 ação prática para hoje e 1 foco principal da semana.
 4) Sugerir 3 microações (simples, executáveis).
 5) Produzir "sinal de atenção" (algo para evitar) de forma leve.
 6) Personalizar levemente com base em focus_area e history_hint.
-7) Se faltar dado astral real (birth_time/city), usar apenas "tema astral semanal" fornecido sem inventar mapa completo.
+7) Se o histórico estiver curto, assuma cautela e mantenha recomendações práticas sem inventar dados.
 
 RESTRIÇÕES DE SEGURANÇA
 - Não fornecer aconselhamento médico, jurídico, financeiro profissional.
@@ -77,7 +77,7 @@ SAÍDA (JSON EXATO)
 
 REGRAS DO energy_score
 - Número de 0 a 100.
-- Baseie em coerência entre tarot, numerologia e astrologia:
+- Baseie em coerência entre tarot, numerologia e histórico:
   - sinais convergentes => score maior
   - sinais mistos => score intermediário
   - sinais conflitantes => score menor
@@ -85,7 +85,7 @@ REGRAS DO energy_score
 
 EXEMPLO DE TOM
 - Claro, humano, útil.
-- Sem jargão técnico astrológico excessivo.
+- Sem jargões técnicos desnecessários.
 `;
 
     const model = genAI.getGenerativeModel({ model: geminiModelName });
