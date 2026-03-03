@@ -4,6 +4,8 @@ import {
   generateIchingWeeklyOracle,
   generateRunesWeeklyOracle,
   getCentralRequirements,
+  getIchingWeeklyOracle,
+  getRunesWeeklyOracle,
 } from '../controllers/oracleController.js';
 import { authRequired } from '../middleware/authRequired.js';
 
@@ -13,6 +15,8 @@ router.use(authRequired);
 router.get('/central/requirements', getCentralRequirements);
 router.post('/central/generate', generateCentralOracle);
 router.post('/runes/weekly/generate', generateRunesWeeklyOracle);
+router.get('/runes/weekly/me', getRunesWeeklyOracle);
 router.post('/iching/weekly/generate', generateIchingWeeklyOracle);
+router.get('/iching/weekly/me', getIchingWeeklyOracle);
 
 export default router;
