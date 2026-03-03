@@ -8,7 +8,62 @@ import { generateRunesReadingData } from '../../modules/oracles/runes.controller
 
 const ORACLE_TYPE = 'runes_weekly';
 
-const buildStubReading = ({ question, weekRef }) => ({
+const RUNES_CATALOG = [
+  { key: 'fehu', name: 'Fehu', meaning: 'Prosperidade, recursos e impulso inicial.' },
+  { key: 'uruz', name: 'Uruz', meaning: 'Vitalidade, força e coragem para agir.' },
+  { key: 'thurisaz', name: 'Thurisaz', meaning: 'Proteção, cautela e decisão estratégica.' },
+  { key: 'ansuz', name: 'Ansuz', meaning: 'Comunicação clara, escuta e orientação.' },
+  { key: 'raidho', name: 'Raidho', meaning: 'Movimento, direção e ajustes de rota.' },
+  { key: 'kenaz', name: 'Kenaz', meaning: 'Clareza, aprendizado e criatividade aplicada.' },
+  { key: 'gebo', name: 'Gebo', meaning: 'Parcerias, troca justa e reciprocidade.' },
+  { key: 'wunjo', name: 'Wunjo', meaning: 'Bem-estar, harmonia e conclusão favorável.' },
+  { key: 'hagalaz', name: 'Hagalaz', meaning: 'Mudança súbita que pede adaptação.' },
+  { key: 'nauthiz', name: 'Nauthiz', meaning: 'Limites, necessidade e foco no essencial.' },
+  { key: 'isa', name: 'Isa', meaning: 'Pausa, contenção e observação consciente.' },
+  { key: 'jera', name: 'Jera', meaning: 'Colheita, ciclos e resultados do esforço.' },
+];
+
+const RUNE_POSITIONS = ['passado', 'presente', 'futuro'];
+
+const buildSeed = (value) => {
+  let hash = 0;
+  const text = String(value || 'runes-weekly');
+  for (let i = 0; i < text.length; i += 1) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const buildWeeklyRunesSpread = ({ userId, weekRef }) => {
+  const pool = [...RUNES_CATALOG];
+  let seed = buildSeed(`${userId}:${weekRef}:threeRunes`);
+
+  const runes = RUNE_POSITIONS.map((position) => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const selectedIndex = seed % pool.length;
+    const [rune] = pool.splice(selectedIndex, 1);
+    const reversed = (seed & 1) === 1;
+    return {
+      position,
+      key: rune.key,
+      name: rune.name,
+      meaning: rune.meaning,
+      reversed,
+    };
+  });
+
+  return { spread: 'threeRunes', runes };
+};
+
+const withWeeklySpread = (reading, context) => ({
+  ...reading,
+  ...buildWeeklyRunesSpread(context),
+});
+
+const buildStubReading = ({ question, weekRef, userId }) => ({
+  spread: 'threeRunes',
+  runes: buildWeeklyRunesSpread({ userId, weekRef }).runes,
   headline: 'Runas da semana',
   summary: 'Semana de revisão e direcionamento gradual. Observe sinais simples e aja com constância.',
   themes: ['clareza', 'ritmo', 'disciplina'],
@@ -46,12 +101,13 @@ export const generateRunesWeekly = async (userId, input = {}, accessToken) => {
       week_ref: weekRef,
     });
 
+    const output = withWeeklySpread(generated, { userId, weekRef });
     const payload = {
       user_id: userId,
       week_start: weekStart,
       oracle_type: ORACLE_TYPE,
       input_payload: inputPayload,
-      output_payload: generated,
+      output_payload: output,
       status: 'ok',
       error_message: null,
     };
@@ -66,10 +122,10 @@ export const generateRunesWeekly = async (userId, input = {}, accessToken) => {
       cached: false,
       oracle_type: ORACLE_TYPE,
       module: saved,
-      output: generated,
+      output,
     };
   } catch (error) {
-    const fallback = buildStubReading({ question: input.question, weekRef });
+    const fallback = buildStubReading({ question: input.question, weekRef, userId });
     const payload = {
       user_id: userId,
       week_start: weekStart,
