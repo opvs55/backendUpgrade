@@ -8,6 +8,36 @@ import { generateIchingReadingData } from '../../modules/oracles/iching.controll
 
 const ORACLE_TYPE = 'iching_weekly';
 
+const createSeededRandom = (seedText) => {
+  let hash = 2166136261;
+  const normalized = String(seedText || 'iching-weekly');
+
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash ^= normalized.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return () => {
+    hash += 0x6D2B79F5;
+    let t = hash;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+const generateWeeklyLines = ({ userId, weekRef, question }) => {
+  const random = createSeededRandom(`${userId || 'anon'}:${weekRef}:${question || ''}`);
+  return Array.from({ length: 6 }, () => (random() >= 0.5 ? 1 : 0));
+};
+
+const withLines = (reading, context) => ({
+  ...reading,
+  lines: Array.isArray(reading?.lines) && reading.lines.length === 6
+    ? reading.lines.map((line) => (line ? 1 : 0))
+    : generateWeeklyLines(context),
+});
+
 const buildStubReading = ({ question, weekRef }) => ({
   headline: 'I Ching da semana',
   summary: 'Momento de equilíbrio entre firmeza e adaptação. Ajustes pequenos trarão estabilidade.',
@@ -17,6 +47,7 @@ const buildStubReading = ({ question, weekRef }) => ({
     'Aja com moderação em conversas sensíveis.',
     'Consolide o que já começou antes de expandir.',
   ],
+  lines: generateWeeklyLines({ weekRef, question }),
   disclaimer: 'Conteúdo para autoconhecimento e reflexão pessoal.',
   metadata: { question: question || null, week_ref: weekRef, stub: true, todo: 'Evoluir heurística semanal de I Ching.' },
 });
@@ -27,13 +58,23 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
 
   const existing = await getWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
   if (existing && !forceRegenerate) {
+    const normalizedOutput = withLines(existing.output_payload || {}, {
+      userId,
+      weekRef,
+      question: existing?.input_payload?.question,
+    });
+
+    if (JSON.stringify(normalizedOutput) !== JSON.stringify(existing.output_payload || {})) {
+      await updateOracleWeeklyModuleById(existing.id, { output_payload: normalizedOutput }, accessToken);
+    }
+
     return {
       week_start: weekStart,
       week_ref: weekRef,
       cached: true,
       oracle_type: ORACLE_TYPE,
       module: existing,
-      output: existing.output_payload,
+      output: normalizedOutput,
     };
   }
 
@@ -46,12 +87,14 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
       week_ref: weekRef,
     });
 
+    const output = withLines(generated, { userId, weekRef, question: input.question });
+
     const payload = {
       user_id: userId,
       week_start: weekStart,
       oracle_type: ORACLE_TYPE,
       input_payload: inputPayload,
-      output_payload: generated,
+      output_payload: output,
       status: 'ok',
       error_message: null,
     };
@@ -66,7 +109,7 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
       cached: false,
       oracle_type: ORACLE_TYPE,
       module: saved,
-      output: generated,
+      output,
     };
   } catch (error) {
     const fallback = buildStubReading({ question: input.question, weekRef });
