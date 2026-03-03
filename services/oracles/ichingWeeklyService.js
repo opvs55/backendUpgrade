@@ -31,14 +31,21 @@ const generateWeeklyLines = ({ userId, weekRef, question }) => {
   return Array.from({ length: 6 }, () => (random() >= 0.5 ? 1 : 0));
 };
 
-const withLines = (reading, context) => ({
+const withUxFields = (reading = {}) => ({
+  ...reading,
+  one_liner: reading.one_liner || 'Fluir com lucidez hoje evita desgaste amanhã.',
+  ritual: reading.ritual || 'Antes de agir, pare por um minuto e observe o contexto real. Escolha uma decisão pequena e consistente com o que você já começou. À noite, anote um ajuste que traga mais equilíbrio para o próximo dia.',
+  reflection_question: reading.reflection_question || 'Onde posso ceder com sabedoria sem abrir mão do que é essencial para mim?',
+});
+
+const withLines = (reading, context) => withUxFields({
   ...reading,
   lines: Array.isArray(reading?.lines) && reading.lines.length === 6
     ? reading.lines.map((line) => (line ? 1 : 0))
     : generateWeeklyLines(context),
 });
 
-const buildStubReading = ({ question, weekRef }) => ({
+const buildStubReading = ({ question, weekRef }) => withUxFields({
   headline: 'I Ching da semana',
   summary: 'Momento de equilíbrio entre firmeza e adaptação. Ajustes pequenos trarão estabilidade.',
   themes: ['adaptação', 'foco', 'equilíbrio'],

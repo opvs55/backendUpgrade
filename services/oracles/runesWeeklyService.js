@@ -61,7 +61,14 @@ const withWeeklySpread = (reading, context) => ({
   ...buildWeeklyRunesSpread(context),
 });
 
-const buildStubReading = ({ question, weekRef, userId }) => ({
+const withUxFields = (reading = {}) => ({
+  ...reading,
+  one_liner: reading.one_liner || 'Seu próximo avanço nasce de uma escolha firme hoje.',
+  ritual: reading.ritual || 'Escolha uma prioridade e escreva o primeiro passo. Reserve 10 minutos por dia para executá-lo sem interrupções. Ao final da semana, revise o que mudou e ajuste com calma.',
+  reflection_question: reading.reflection_question || 'Qual ação simples desta semana mais fortalece o caminho que você quer construir?',
+});
+
+const buildStubReading = ({ question, weekRef, userId }) => withUxFields({
   spread: 'threeRunes',
   runes: buildWeeklyRunesSpread({ userId, weekRef }).runes,
   headline: 'Runas da semana',
@@ -82,13 +89,19 @@ export const generateRunesWeekly = async (userId, input = {}, accessToken) => {
 
   const existing = await getWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
   if (existing && !forceRegenerate) {
+    const normalizedOutput = withUxFields(existing.output_payload || {});
+
+    if (JSON.stringify(normalizedOutput) !== JSON.stringify(existing.output_payload || {})) {
+      await updateOracleWeeklyModuleById(existing.id, { output_payload: normalizedOutput }, accessToken);
+    }
+
     return {
       week_start: weekStart,
       week_ref: weekRef,
       cached: true,
       oracle_type: ORACLE_TYPE,
       module: existing,
-      output: existing.output_payload,
+      output: normalizedOutput,
     };
   }
 
@@ -101,7 +114,7 @@ export const generateRunesWeekly = async (userId, input = {}, accessToken) => {
       week_ref: weekRef,
     });
 
-    const output = withWeeklySpread(generated, { userId, weekRef });
+    const output = withUxFields(withWeeklySpread(generated, { userId, weekRef }));
     const payload = {
       user_id: userId,
       week_start: weekStart,
