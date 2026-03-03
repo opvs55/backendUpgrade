@@ -26,6 +26,9 @@ SAÍDA (JSON EXATO)
 {
   "headline": "string (até 90 caracteres)",
   "summary": "string (até 220 caracteres)",
+  "one_liner": "string (1 frase forte)",
+  "ritual": "string (2-3 frases práticas)",
+  "reflection_question": "string (1 pergunta)",
   "themes": ["string", "string", "string"],
   "recommended_actions": ["string", "string", "string"],
   "disclaimer": "Conteúdo para autoconhecimento e reflexão pessoal."
