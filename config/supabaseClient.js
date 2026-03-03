@@ -8,14 +8,16 @@ if (!env.supabaseUrl || !env.supabaseAnonKey) {
 
 export const supabaseAnonClient = createClient(env.supabaseUrl || 'http://localhost', env.supabaseAnonKey || 'public-anon-key');
 
-export const createSupabaseServerClient = (jwt) => {
-  if (!jwt) {
-    throw new Error('Token JWT é necessário para criar cliente autenticado.');
+export const supabaseUserClient = (accessToken) => {
+  if (!accessToken) {
+    throw new Error('Access token é necessário para criar cliente do usuário no Supabase.');
   }
 
   return createClient(env.supabaseUrl || 'http://localhost', env.supabaseAnonKey || 'public-anon-key', {
     global: {
-      headers: { Authorization: `Bearer ${jwt}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     },
   });
 };
+
+export const createSupabaseServerClient = supabaseUserClient;

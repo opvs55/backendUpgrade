@@ -70,7 +70,7 @@ const summarizeTarotHistory = (readings = []) => {
   };
 };
 
-const loadWeeklyContext = async (userId) => {
+const loadWeeklyContext = async (userId, accessToken) => {
   const { weekStart, weekRef } = getIsoWeekInfo();
 
   const [
@@ -86,8 +86,8 @@ const loadWeeklyContext = async (userId) => {
     getLatestNumerologyByUserId(userId),
     getNumerologyWeeklyByUserAndWeekStart(userId, weekStart),
     getWeeklyCardByUserAndWeekStart(userId, weekStart),
-    getOracleWeeklyModule(userId, weekStart, 'runes_weekly'),
-    getOracleWeeklyModule(userId, weekStart, 'iching_weekly'),
+    getOracleWeeklyModule(userId, weekStart, 'runes_weekly', accessToken),
+    getOracleWeeklyModule(userId, weekStart, 'iching_weekly', accessToken),
     listRecentTarotReadingsByUserId(userId, 10),
   ]);
 
@@ -104,8 +104,8 @@ const loadWeeklyContext = async (userId) => {
   };
 };
 
-export const getCentralOracleRequirements = async (userId) => {
-  const loaded = await loadWeeklyContext(userId);
+export const getCentralOracleRequirements = async (userId, accessToken) => {
+  const loaded = await loadWeeklyContext(userId, accessToken);
 
   return mapRequirements({
     profile: loaded.profile,
@@ -119,14 +119,14 @@ export const getCentralOracleRequirements = async (userId) => {
   });
 };
 
-export const generateCentralReading = async (userId, input = {}) => {
+export const generateCentralReading = async (userId, input = {}, accessToken) => {
   if (input.force_regenerate_modules) {
     await Promise.all([
-      generateRunesWeekly(userId, { question: input.question, force_regenerate: true }),
-      generateIchingWeekly(userId, { question: input.question, force_regenerate: true }),
+      generateRunesWeekly(userId, { question: input.question, force_regenerate: true }, accessToken),
+      generateIchingWeekly(userId, { question: input.question, force_regenerate: true }, accessToken),
     ]);
   }
-  const loaded = await loadWeeklyContext(userId);
+  const loaded = await loadWeeklyContext(userId, accessToken);
   const requirements = mapRequirements({
     profile: loaded.profile,
     numerologyBase: loaded.numerologyBase,

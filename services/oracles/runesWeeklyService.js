@@ -21,11 +21,11 @@ const buildStubReading = ({ question, weekRef }) => ({
   metadata: { question: question || null, week_ref: weekRef, stub: true, todo: 'Evoluir heurística semanal de runas.' },
 });
 
-export const generateRunesWeekly = async (userId, input = {}) => {
+export const generateRunesWeekly = async (userId, input = {}, accessToken) => {
   const { weekStart, weekRef } = getIsoWeekInfo();
   const forceRegenerate = Boolean(input.force_regenerate);
 
-  const existing = await getOracleWeeklyModule(userId, weekStart, ORACLE_TYPE);
+  const existing = await getOracleWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
   if (existing && !forceRegenerate) {
     return {
       week_start: weekStart,
@@ -57,8 +57,8 @@ export const generateRunesWeekly = async (userId, input = {}) => {
     };
 
     const saved = existing
-      ? await updateOracleWeeklyModuleById(existing.id, payload)
-      : await saveOracleWeeklyModule(payload);
+      ? await updateOracleWeeklyModuleById(existing.id, payload, accessToken)
+      : await saveOracleWeeklyModule(payload, accessToken);
 
     return {
       week_start: weekStart,
@@ -81,8 +81,8 @@ export const generateRunesWeekly = async (userId, input = {}) => {
     };
 
     const saved = existing
-      ? await updateOracleWeeklyModuleById(existing.id, payload)
-      : await saveOracleWeeklyModule(payload);
+      ? await updateOracleWeeklyModuleById(existing.id, payload, accessToken)
+      : await saveOracleWeeklyModule(payload, accessToken);
 
     return {
       week_start: weekStart,
