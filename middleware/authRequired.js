@@ -18,6 +18,7 @@ export const authRequired = (req, _res, next) => {
 
   if (devUserId) {
     req.user = { id: String(devUserId), authMode: 'dev' };
+    req.accessToken = null;
     return next();
   }
 
@@ -26,6 +27,7 @@ export const authRequired = (req, _res, next) => {
     const userId = decodeJwtSub(token);
     if (userId) {
       req.user = { id: String(userId), token, authMode: 'bearer' };
+      req.accessToken = token;
       return next();
     }
   }
