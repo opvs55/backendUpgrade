@@ -1,5 +1,5 @@
 import {
-  getOracleWeeklyModule,
+  getWeeklyModule,
   saveOracleWeeklyModule,
   updateOracleWeeklyModuleById,
 } from '../../repositories/oracleWeeklyModuleRepository.js';
@@ -25,7 +25,7 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
   const { weekStart, weekRef } = getIsoWeekInfo();
   const forceRegenerate = Boolean(input.force_regenerate);
 
-  const existing = await getOracleWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
+  const existing = await getWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
   if (existing && !forceRegenerate) {
     return {
       week_start: weekStart,
@@ -93,4 +93,18 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
       output: fallback,
     };
   }
+};
+
+
+export const getIchingWeeklyModule = async (userId, accessToken) => {
+  const { weekStart, weekRef } = getIsoWeekInfo();
+  const module = await getWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
+
+  return {
+    week_start: weekStart,
+    week_ref: weekRef,
+    oracle_type: ORACLE_TYPE,
+    cached: Boolean(module),
+    module: module || null,
+  };
 };

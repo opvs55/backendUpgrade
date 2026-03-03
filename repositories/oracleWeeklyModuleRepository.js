@@ -25,7 +25,7 @@ const getClient = (accessToken) => {
   }
 };
 
-export const getOracleWeeklyModule = async (userId, weekStart, oracleType, accessToken) => {
+export const getWeeklyModule = async (userId, weekStart, oracleType, accessToken) => {
   const client = getClient(accessToken);
 
   const { data, error } = await client
@@ -41,6 +41,8 @@ export const getOracleWeeklyModule = async (userId, weekStart, oracleType, acces
   if (error) throw buildSupabaseError('select', error);
   return data;
 };
+
+export const getOracleWeeklyModule = getWeeklyModule;
 
 export const saveOracleWeeklyModule = async (payload, accessToken) => {
   const client = getClient(accessToken);
