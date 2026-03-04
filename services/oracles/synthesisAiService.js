@@ -1,4 +1,6 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { AppError } from '../../shared/http/AppError.js';
+import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 
 const fallbackReading = () => ({
   title: 'Oráculo Central da Semana',
@@ -37,12 +39,18 @@ const sanitizeReading = (value = {}) => {
 
 export const generateSynthesis = async ({ context }) => {
   if (!genAI) {
-    return fallbackReading();
+    throw new AppError('Não foi possível gerar a Leitura Geral agora. Tente novamente em instantes.', {
+      code: ERROR_CODES.LLM_PROVIDER_ERROR,
+      status: 502,
+      details: [{ stage: 'call gemini', reason: 'GEN_AI_NOT_CONFIGURED' }],
+    });
   }
 
   const prompt = `Você é um oráculo sábio e detalhista em português brasileiro.
 Com base no contexto abaixo, produza uma leitura semanal integrando tarot, numerologia, runas, i ching e padrões recentes.
 Tom: acolhedor, claro, prático, sem fatalismo.
+Se algum sinal estiver ausente no contexto, escreva literalmente "Sinal ausente nesta semana" e continue com os demais sinais disponíveis.
+Nunca invente cartas, leituras ou dados não fornecidos no contexto.
 Não mencione tecnologia, API, JSON, backend, banco de dados, módulos ou regras internas.
 Retorne APENAS um JSON válido no formato:
 {
@@ -70,7 +78,11 @@ Contexto: ${JSON.stringify(context)}`;
     }
 
     return sanitizeReading(JSON.parse(text.slice(start, end + 1)));
-  } catch {
-    return fallbackReading();
+  } catch (error) {
+    throw new AppError('Não foi possível gerar a Leitura Geral agora. Tente novamente em instantes.', {
+      code: ERROR_CODES.LLM_PROVIDER_ERROR,
+      status: 502,
+      details: [{ stage: 'call gemini', reason: error?.message || 'UNKNOWN_GEMINI_ERROR' }],
+    });
   }
 };
