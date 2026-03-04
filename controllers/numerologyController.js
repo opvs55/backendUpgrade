@@ -12,6 +12,27 @@ const getMonthName = (monthNumber) => {
   return "Mês Inválido";
 };
 
+const sanitizeNumerologyResponse = (reading) => {
+  if (!reading) return reading;
+
+  const sanitizedReading = { ...reading };
+  delete sanitizedReading.birthday_number;
+
+  if (typeof sanitizedReading.birthday_secret_meaning === 'string') {
+    try {
+      const parsedMeaning = JSON.parse(sanitizedReading.birthday_secret_meaning);
+      if (parsedMeaning && typeof parsedMeaning === 'object') {
+        delete parsedMeaning.numerology_details;
+        sanitizedReading.birthday_secret_meaning = JSON.stringify(parsedMeaning);
+      }
+    } catch (parseError) {
+      console.warn('[Numerology Controller] Falha ao sanitizar birthday_secret_meaning:', parseError.message);
+    }
+  }
+
+  return sanitizedReading;
+};
+
 // --- Função Principal para Calcular ou Obter Leitura ---
 export const getOrCalculateNumerology = async (req, res) => {
   try {
@@ -62,7 +83,7 @@ export const getOrCalculateNumerology = async (req, res) => {
     }
     if (existingReading) {
       console.log(`[Numerology Controller] Leitura existente encontrada para ${userId}. Retornando.`);
-      return res.status(200).json(existingReading);
+      return res.status(200).json(sanitizeNumerologyResponse(existingReading));
     }
 
     // Validação da Data (se não encontrou e data foi enviada)
@@ -108,7 +129,6 @@ export const getOrCalculateNumerology = async (req, res) => {
           {
             "archetype_title": "O Título do Arquétipo do Dia (ex: O Dia da Aparente Simplicidade)",
             "archetype_description": "Um parágrafo de 3-5 frases descrevendo a essência das pessoas nascidas neste dia. Pode usar **negrito** para ênfase.",
-            "numerology_details": "Uma análise numerologica e planetas associados ao dia (ex: 'Regido pelo número 6 (2+4=6) e Vênus...')",
             "tarot_card": "Uma análise sobre a carta de Tarot associada e seu significado (ex: 'A sexta carta dos Arcanos Maiores é Os Enamorados...')",
             "advice": "Um conselho prático (ex: 'Mantenha uma vida equilibrada e tome cuidado...')",
             "strengths": ["Um Ponto Forte", "Outro Ponto Forte", "Terceiro Ponto Forte"],
@@ -200,7 +220,7 @@ export const getOrCalculateNumerology = async (req, res) => {
 
     // Retorna sucesso
     console.log(`[Numerology Controller] Retornando leitura criada com status 201 para ${userId}.`);
-    return res.status(201).json(insertedReading);
+    return res.status(201).json(sanitizeNumerologyResponse(insertedReading));
 
   } catch (error) {
     console.error("[Numerology Controller] ERRO GERAL CAPTURADO em getOrCalculateNumerology:", { message: error.message, stack: error.stack });
