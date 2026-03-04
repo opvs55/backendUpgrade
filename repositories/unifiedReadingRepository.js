@@ -1,7 +1,9 @@
-import { supabaseAnonClient } from '../config/supabaseClient.js';
+import { supabaseAnonClient, supabaseUserClient } from '../config/supabaseClient.js';
 
-export const createUnifiedReading = async (payload) => {
-  const { data, error } = await supabaseAnonClient
+const getClient = (accessToken) => (accessToken ? supabaseUserClient(accessToken) : supabaseAnonClient);
+
+export const createUnifiedReading = async (payload, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('unified_readings')
     .insert(payload)
     .select('*')
@@ -10,8 +12,8 @@ export const createUnifiedReading = async (payload) => {
   return data;
 };
 
-export const updateUnifiedReadingById = async (id, payload) => {
-  const { data, error } = await supabaseAnonClient
+export const updateUnifiedReadingById = async (id, payload, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('unified_readings')
     .update(payload)
     .eq('id', id)
@@ -22,8 +24,19 @@ export const updateUnifiedReadingById = async (id, payload) => {
   return data;
 };
 
-export const getUnifiedReadingByUserAndWeekStart = async (userId, weekStart) => {
-  const { data, error } = await supabaseAnonClient
+export const upsertUnifiedReading = async (payload, accessToken) => {
+  const { data, error } = await getClient(accessToken)
+    .from('unified_readings')
+    .upsert(payload, { onConflict: 'user_id,week_start' })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUnifiedReadingByUserAndWeekStart = async (userId, weekStart, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('unified_readings')
     .select('*')
     .eq('user_id', userId)
@@ -36,8 +49,8 @@ export const getUnifiedReadingByUserAndWeekStart = async (userId, weekStart) => 
   return data;
 };
 
-export const listUnifiedReadingsByUser = async (userId, limit = 20, offset = 0) => {
-  const { data, error } = await supabaseAnonClient
+export const listUnifiedReadingsByUser = async (userId, limit = 20, offset = 0, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('unified_readings')
     .select('*')
     .eq('user_id', userId)
@@ -48,8 +61,8 @@ export const listUnifiedReadingsByUser = async (userId, limit = 20, offset = 0) 
   return data || [];
 };
 
-export const getUnifiedReadingByIdForUser = async (id, userId) => {
-  const { data, error } = await supabaseAnonClient
+export const getUnifiedReadingByIdForUser = async (id, userId, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('unified_readings')
     .select('*')
     .eq('id', id)

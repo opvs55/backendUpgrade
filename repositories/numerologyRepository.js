@@ -1,7 +1,9 @@
-import { supabaseAnonClient } from '../config/supabaseClient.js';
+import { supabaseAnonClient, supabaseUserClient } from '../config/supabaseClient.js';
 
-export const getLatestNumerologyByUserId = async (userId) => {
-  const { data, error } = await supabaseAnonClient
+const getClient = (accessToken) => (accessToken ? supabaseUserClient(accessToken) : supabaseAnonClient);
+
+export const getLatestNumerologyByUserId = async (userId, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('numerology_readings')
     .select('*')
     .eq('user_id', userId)
@@ -13,8 +15,8 @@ export const getLatestNumerologyByUserId = async (userId) => {
   return data;
 };
 
-export const getLatestNumerologyWeeklyByUserId = async (userId) => {
-  const { data, error } = await supabaseAnonClient
+export const getLatestNumerologyWeeklyByUserId = async (userId, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('numerology_weekly_readings')
     .select('*')
     .eq('user_id', userId)
