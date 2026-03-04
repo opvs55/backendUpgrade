@@ -1,4 +1,5 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { logger } from '../../shared/logging/logger.js';
 
 const fallbackReading = () => ({
   title: 'Oráculo Central da Semana',
@@ -37,12 +38,19 @@ const sanitizeReading = (value = {}) => {
 
 export const generateSynthesis = async ({ context }) => {
   if (!genAI) {
+    logger.warn('central reading stage failed: call gemini', {
+      stage: 'call gemini',
+      error: 'GEN_AI_NOT_CONFIGURED',
+    });
     return fallbackReading();
   }
 
   const prompt = `Você é um oráculo sábio e detalhista em português brasileiro.
 Com base no contexto abaixo, produza uma leitura semanal integrando tarot, numerologia, runas, i ching e padrões recentes.
 Tom: acolhedor, claro, prático, sem fatalismo.
+Se algum sinal estiver ausente no contexto, escreva literalmente "Sinal ausente nesta semana" e continue com os demais sinais disponíveis.
+Nunca invente cartas, leituras ou dados não fornecidos no contexto.
+Não dependa de histórico de leituras anteriores; use apenas os sinais presentes no contexto da semana atual.
 Não mencione tecnologia, API, JSON, backend, banco de dados, módulos ou regras internas.
 Retorne APENAS um JSON válido no formato:
 {
@@ -70,7 +78,11 @@ Contexto: ${JSON.stringify(context)}`;
     }
 
     return sanitizeReading(JSON.parse(text.slice(start, end + 1)));
-  } catch {
+  } catch (error) {
+    logger.warn('central reading stage failed: call gemini', {
+      stage: 'call gemini',
+      error: error?.message || 'UNKNOWN_GEMINI_ERROR',
+    });
     return fallbackReading();
   }
 };
