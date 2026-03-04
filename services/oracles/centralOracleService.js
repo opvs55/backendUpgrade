@@ -86,8 +86,42 @@ const buildBasicProfile = (profile) => ({
   username: profile?.username || null,
 });
 
-const extractFallbackSignals = (modulesSnapshot, missingSources) => {
-  const signals = [];
+const safeOptionalFetch = async ({ sourceName, fallbackValue = null, fetcher, loggerContext = {} }) => {
+  try {
+    const value = await fetcher();
+    return value ?? fallbackValue;
+  } catch (error) {
+    logger.warn('central reading optional source unavailable', {
+      source: sourceName,
+      ...loggerContext,
+      error: error?.message || 'UNKNOWN_OPTIONAL_SOURCE_ERROR',
+    });
+    return fallbackValue;
+  }
+};
+
+const collectTextValues = (...values) => values
+  .flatMap((value) => (Array.isArray(value) ? value : [value]))
+  .filter((value) => typeof value === 'string' && value.trim().length > 0)
+  .map((value) => value.trim());
+
+const collectModuleThemes = (module = {}) => collectTextValues(
+  module?.themes,
+  module?.theme,
+  module?.summary?.themes,
+  module?.headline,
+  module?.summary,
+);
+
+const collectRecommendedActions = (module = {}) => collectTextValues(
+  module?.recommended_actions,
+  module?.actions,
+  module?.practical_guidance,
+  module?.guidance,
+);
+
+const extractFallbackSignals = (modulesSnapshot) => {
+  const signals = {};
   const tarot = modulesSnapshot.tarot_weekly;
   const runes = modulesSnapshot.runes_weekly;
   const iching = modulesSnapshot.iching_weekly;
@@ -95,49 +129,69 @@ const extractFallbackSignals = (modulesSnapshot, missingSources) => {
 
   if (tarot?.card_name || tarot?.card?.name) {
     const cardName = tarot.card_name || tarot.card?.name;
-    signals.push(`Tarot semanal aponta ${cardName} como arquétipo de foco para suas decisões.`);
+    signals.tarot = `Tarot semanal aponta ${cardName} como arquétipo de foco para suas decisões.`;
+  } else {
+    signals.tarot = 'Sinal ausente nesta semana';
   }
 
   if (runes?.rune_name || runes?.rune?.name) {
     const runeName = runes.rune_name || runes.rune?.name;
-    signals.push(`Runas destacam ${runeName}, pedindo atitude consciente e leitura dos sinais do dia.`);
+    signals.runes = `Runas destacam ${runeName}, pedindo atitude consciente e leitura dos sinais do dia.`;
+  } else {
+    signals.runes = 'Sinal ausente nesta semana';
   }
 
   if (iching?.hexagram_number || iching?.hexagram?.number) {
     const hexagram = iching.hexagram_number || iching.hexagram?.number;
-    signals.push(`I Ching indica o hexagrama ${hexagram} como movimento-base para conduzir a semana.`);
+    signals.iching = `I Ching indica o hexagrama ${hexagram} como movimento-base para conduzir a semana.`;
+  } else {
+    signals.iching = 'Sinal ausente nesta semana';
   }
 
   if (numerologyTime?.month_energy) {
-    signals.push(`Numerologia temporal marca energia ${numerologyTime.month_energy}, favorecendo consistência e ajustes graduais.`);
-  }
-
-  if (signals.length === 0) {
-    signals.push('A leitura parcial sugere foco no essencial, organização leve e respostas objetivas.');
-  }
-
-  if (missingSources.length > 0) {
-    signals.push(`Fontes pendentes nesta semana: ${missingSources.join(', ')}.`);
+    signals.numerology_time = `Numerologia temporal marca energia ${numerologyTime.month_energy}, favorecendo consistência e ajustes graduais.`;
+  } else {
+    signals.numerology_time = 'Sinal ausente nesta semana';
   }
 
   return signals;
 };
 
-const buildFallbackCentralReading = ({ modulesSnapshot, missingSources }) => ({
-  title: 'Oráculo Central da Semana',
-  one_liner: 'Leitura gerada em modo resiliente com os módulos disponíveis desta semana.',
-  overview: 'A integração por IA falhou temporariamente, mas a síntese foi montada por template para manter continuidade e direção prática.',
-  signals: extractFallbackSignals(modulesSnapshot, missingSources),
-  synthesis: 'Com base nas camadas ativas (tarot, runas, I Ching e numerologia temporal), o melhor caminho é constância com decisões simples e revisão diária de prioridades.',
-  practical_guidance: [
-    'Escolha uma frente principal e limite dispersões.',
-    'Use os sinais da semana para calibrar timing de conversas e entregas.',
-    'No fim do dia, revise energia, pendências e próximos passos.',
-  ],
-  closing: 'Mesmo em modo parcial, há clareza suficiente para avançar com estabilidade.',
-  tags: ['oraculo-central', 'semana', 'fallback'],
-  energy_score: 68,
-});
+const buildFallbackCentralReading = ({ modulesSnapshot }) => {
+  const modules = [
+    modulesSnapshot.tarot_weekly,
+    modulesSnapshot.numerology_weekly,
+    modulesSnapshot.runes_weekly,
+    modulesSnapshot.iching_weekly,
+  ].filter(Boolean);
+
+  const themes = modules.flatMap((module) => collectModuleThemes(module));
+  const actions = modules.flatMap((module) => collectRecommendedActions(module));
+  const firstTheme = themes[0] || 'Sinal ausente nesta semana';
+  const firstAction = actions[0] || 'Sinal ausente nesta semana';
+
+  return {
+    title: 'Oráculo Central da Semana',
+    one_liner: `Leitura em modo resiliente com foco em ${firstTheme}.`,
+    overview: `A integração por IA falhou temporariamente. Síntese montada com os dados disponíveis desta semana, priorizando ${firstAction}.`,
+    signals: extractFallbackSignals(modulesSnapshot),
+    synthesis: {
+      convergences: themes.length > 0 ? themes.slice(0, 5) : ['Sinal ausente nesta semana'],
+      tensions: themes.length > 1 ? themes.slice(1, 4).map((theme) => `Equilibrar ${theme} com limites realistas.`) : ['Sinal ausente nesta semana'],
+    },
+    practical_guidance: {
+      do: actions.length > 0 ? actions.slice(0, 4) : ['Sinal ausente nesta semana'],
+      avoid: actions.length > 0 ? ['Evitar dispersão e excesso de prioridades em paralelo.'] : ['Sinal ausente nesta semana'],
+      ritual: actions.length > 0 ? 'Reserve 10 minutos diários para revisar foco, energia e próximos passos.' : 'Sinal ausente nesta semana',
+      reflection_question: themes.length > 0
+        ? `Qual escolha desta semana melhor honra o tema "${firstTheme}"?`
+        : 'Sinal ausente nesta semana',
+    },
+    closing: 'Mesmo em fallback, a leitura foi preservada para manter continuidade na sua jornada.',
+    tags: ['oraculo-central', 'semana', 'fallback'],
+    energy_score: 68,
+  };
+};
 
 const safeFetch = async ({ userId, weekStart, sourceName, fallbackValue, fetcher }) => {
   try {
@@ -158,7 +212,11 @@ const safeFetch = async ({ userId, weekStart, sourceName, fallbackValue, fetcher
       weekStart,
       error: error?.message || 'UNKNOWN_FETCH_ERROR',
     });
-    throw error;
+    return {
+      value: fallbackValue,
+      missing: true,
+      sourceName,
+    };
   }
 };
 
@@ -167,8 +225,16 @@ const loadWeeklyContext = async (userId, accessToken) => {
   const weekStart = getWeekStartISO(now);
   const weekRef = getWeekRef(now);
   const [profile, numerologyBase] = await Promise.all([
-    getProfileById(userId, accessToken),
-    getLatestNumerologyByUserId(userId, accessToken),
+    safeOptionalFetch({
+      sourceName: 'profile',
+      fetcher: () => getProfileById(userId, accessToken),
+      loggerContext: { userId, weekStart },
+    }),
+    safeOptionalFetch({
+      sourceName: 'numerology_base',
+      fetcher: () => getLatestNumerologyByUserId(userId, accessToken),
+      loggerContext: { userId, weekStart },
+    }),
   ]);
 
   const [numerologyWeeklyResult, weeklyCardResult, runesWeeklyResult, ichingWeeklyResult] = await Promise.all([
@@ -247,7 +313,11 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
   const weekStart = getWeekStartISO(now);
   const weekRef = getWeekRef(now);
 
-  const existingWeeklyUnified = await getUnifiedReadingByUserAndWeekStart(userId, weekStart, accessToken);
+  const existingWeeklyUnified = await safeOptionalFetch({
+    sourceName: 'unified_readings_lookup',
+    fetcher: () => getUnifiedReadingByUserAndWeekStart(userId, weekStart, accessToken),
+    loggerContext: { userId, weekStart },
+  });
   if (existingWeeklyUnified && input.force_regenerate_final !== true) {
     const existingInputs = existingWeeklyUnified.inputs_snapshot || {};
     return {
@@ -256,13 +326,8 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       cached: true,
       partial: Boolean(existingInputs.partial),
       ai_failed: Boolean(existingInputs.ai_failed),
-      missing_sources: existingInputs.missing_sources || [],
-      sources_used: existingInputs.sources_used || [],
       reading_id: existingWeeklyUnified.id,
       final_reading: existingWeeklyUnified.final_reading,
-      energy_score: existingWeeklyUnified.energy_score,
-      tags: existingWeeklyUnified.tags || [],
-      unified_reading: existingWeeklyUnified,
     };
   }
 
@@ -279,7 +344,10 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
         weekStart,
         error: error?.message || 'UNKNOWN_MODULES_ERROR',
       });
-      throw error;
+      logger.warn('central reading proceeding without forced module regeneration', {
+        userId,
+        weekStart,
+      });
     }
   }
 
@@ -315,10 +383,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       error: error?.message || 'UNKNOWN_GEMINI_ERROR',
     });
     aiFallbackUsed = true;
-    finalReading = buildFallbackCentralReading({
-      modulesSnapshot,
-      missingSources: loaded.missingSources,
-    });
+    finalReading = buildFallbackCentralReading({ modulesSnapshot });
   }
 
   const finalPartial = partial || aiFallbackUsed;
@@ -357,7 +422,22 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       weekStart: loaded.weekStart,
       error: error?.message || 'UNKNOWN_SAVE_ERROR',
     });
-    throw error;
+    const fallbackReadingId = `unsaved-${loaded.weekStart}-${userId}`;
+    logger.warn('central reading returning unsaved fallback due persistence failure', {
+      userId,
+      weekStart: loaded.weekStart,
+      fallbackReadingId,
+    });
+
+    return {
+      week_start: loaded.weekStart,
+      week_ref: loaded.weekRef,
+      cached: false,
+      partial: true,
+      ai_failed: true,
+      reading_id: fallbackReadingId,
+      final_reading: finalReading,
+    };
   }
 
   return {
@@ -366,11 +446,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
     cached: false,
     partial: finalPartial,
     ai_failed: aiFallbackUsed,
-    missing_sources: loaded.missingSources,
-    sources_used: loaded.sourcesUsed,
     reading_id: saved.id,
     final_reading: saved.final_reading,
-    energy_score: saved.energy_score,
-    tags: saved.tags || [],
   };
 };
