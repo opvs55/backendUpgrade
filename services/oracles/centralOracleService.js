@@ -3,7 +3,6 @@ import { getLatestNumerologyByUserId } from '../../repositories/numerologyReposi
 import { getNumerologyWeeklyByUserAndWeekStart } from '../../repositories/numerologyWeeklyRepository.js';
 import { getWeeklyCardByUserAndWeekStart } from '../../repositories/weeklyCardRepository.js';
 import { getOracleWeeklyModule } from '../../repositories/oracleWeeklyModuleRepository.js';
-import { listRecentTarotReadingsByUserId } from '../../repositories/tarotReadingRepository.js';
 import {
   getUnifiedReadingByUserAndWeekStart,
   upsertUnifiedReading,
@@ -13,8 +12,6 @@ import { generateRunesWeekly } from './runesWeeklyService.js';
 import { generateIchingWeekly } from './ichingWeeklyService.js';
 import { getWeekRef, getWeekStartISO } from '../../utils/week.js';
 import { logger } from '../../shared/logging/logger.js';
-import { AppError } from '../../shared/http/AppError.js';
-import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 
 const reduceToDigit = (value) => {
   let current = Number(value) || 0;
@@ -82,8 +79,32 @@ const SOURCE_KEYS = {
   numerologyWeekly: 'numerology_weekly',
   runesWeekly: 'runes_weekly',
   ichingWeekly: 'iching_weekly',
-  tarotReadings: 'readings',
 };
+
+const buildBasicProfile = (profile) => ({
+  name: profile?.name || null,
+  username: profile?.username || null,
+});
+
+const buildFallbackCentralReading = () => ({
+  title: 'Oráculo Central da Semana',
+  one_liner: 'Siga com foco no essencial e ajustes pequenos, mas consistentes.',
+  overview: 'A síntese completa não ficou disponível agora, então esta leitura parcial prioriza estabilidade e clareza prática para a semana.',
+  signals: [
+    'Revise compromissos e mantenha apenas o que sustenta sua energia.',
+    'Dê preferência a decisões simples e objetivas.',
+    'Faça uma pausa curta antes de responder temas importantes.',
+  ],
+  synthesis: 'Mesmo sem todos os detalhes integrados por IA, você ganha força ao combinar presença, organização e ritmo sustentável.',
+  practical_guidance: [
+    'Escolha uma prioridade central para a semana.',
+    'Mantenha um check-in diário rápido de foco e energia.',
+    'Finalize pendências antigas antes de iniciar novas frentes.',
+  ],
+  closing: 'Simplicidade com constância será sua melhor estratégia neste ciclo.',
+  tags: ['oraculo-central', 'semana', 'parcial'],
+  energy_score: 70,
+});
 
 const safeFetch = async ({ userId, weekStart, sourceName, fallbackValue, fetcher }) => {
   try {
@@ -117,7 +138,7 @@ const loadWeeklyContext = async (userId, accessToken) => {
     getLatestNumerologyByUserId(userId, accessToken),
   ]);
 
-  const [numerologyWeeklyResult, weeklyCardResult, runesWeeklyResult, ichingWeeklyResult, tarotReadingsResult] = await Promise.all([
+  const [numerologyWeeklyResult, weeklyCardResult, runesWeeklyResult, ichingWeeklyResult] = await Promise.all([
     safeFetch({
       userId,
       weekStart,
@@ -146,13 +167,6 @@ const loadWeeklyContext = async (userId, accessToken) => {
       fallbackValue: null,
       fetcher: async () => normalizeModulePayload(await getOracleWeeklyModule(userId, weekStart, 'iching_weekly', accessToken)),
     }),
-    safeFetch({
-      userId,
-      weekStart,
-      sourceName: SOURCE_KEYS.tarotReadings,
-      fallbackValue: [],
-      fetcher: async () => (await listRecentTarotReadingsByUserId(userId, 5, accessToken))?.slice(0, 5) || [],
-    }),
   ]);
 
   const sourceResults = [
@@ -160,7 +174,6 @@ const loadWeeklyContext = async (userId, accessToken) => {
     numerologyWeeklyResult,
     runesWeeklyResult,
     ichingWeeklyResult,
-    tarotReadingsResult,
   ];
 
   const missingSources = sourceResults.filter((item) => item.missing).map((item) => item.sourceName);
@@ -175,7 +188,6 @@ const loadWeeklyContext = async (userId, accessToken) => {
     weeklyCard: weeklyCardResult.value,
     runesWeekly: runesWeeklyResult.value,
     ichingWeekly: ichingWeeklyResult.value,
-    tarotReadings: tarotReadingsResult.value,
     numerologyTime: buildNumerologyTime(now),
     missingSources,
     sourcesUsed,
@@ -204,14 +216,14 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
 
   const existingWeeklyUnified = await getUnifiedReadingByUserAndWeekStart(userId, weekStart, accessToken);
   if (existingWeeklyUnified && input.force_regenerate_final !== true) {
-    const existingSnapshot = existingWeeklyUnified.modules_snapshot || existingWeeklyUnified.inputs_snapshot || {};
+    const existingInputs = existingWeeklyUnified.inputs_snapshot || {};
     return {
       week_start: weekStart,
       week_ref: weekRef,
       cached: true,
       partial: Boolean(existingWeeklyUnified.partial),
-      missing_sources: existingSnapshot.missing_sources || [],
-      sources_used: existingSnapshot.sources_used || [],
+      missing_sources: existingInputs.missing_sources || [],
+      sources_used: existingInputs.sources_used || [],
       reading_id: existingWeeklyUnified.id,
       final_reading: existingWeeklyUnified.final_reading,
       energy_score: existingWeeklyUnified.energy_score,
@@ -240,18 +252,16 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
   const loaded = await loadWeeklyContext(userId, accessToken);
 
   const modulesSnapshot = {
+    profile: buildBasicProfile(loaded.profile),
     tarot_weekly: loaded.weeklyCard,
     numerology_time: loaded.numerologyTime,
-    numerology_base: loaded.numerologyBase,
     numerology_weekly: loaded.numerologyWeekly,
     runes_weekly: loaded.runesWeekly,
     iching_weekly: loaded.ichingWeekly,
-    recent_tarot_history: loaded.tarotReadings,
   };
 
+  let aiFallbackUsed = false;
   const partial = loaded.missingSources.length > 0;
-  modulesSnapshot.missing_sources = loaded.missingSources;
-  modulesSnapshot.sources_used = loaded.sourcesUsed;
 
   let finalReading;
   try {
@@ -259,7 +269,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       context: {
         week_start: loaded.weekStart,
         week_ref: loaded.weekRef,
-        profile: loaded.profile,
+        profile: buildBasicProfile(loaded.profile),
         modules_snapshot: modulesSnapshot,
       },
     });
@@ -270,11 +280,11 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       weekStart: loaded.weekStart,
       error: error?.message || 'UNKNOWN_GEMINI_ERROR',
     });
-    throw new AppError('Não foi possível gerar a Leitura Geral agora. Tente novamente em instantes.', {
-      code: ERROR_CODES.LLM_PROVIDER_ERROR,
-      status: 502,
-    });
+    aiFallbackUsed = true;
+    finalReading = buildFallbackCentralReading();
   }
+
+  const finalPartial = partial || aiFallbackUsed;
 
   const payload = {
     user_id: userId,
@@ -288,7 +298,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       sources_used: loaded.sourcesUsed,
     },
     modules_snapshot: modulesSnapshot,
-    partial,
+    partial: finalPartial,
     final_reading: finalReading,
     energy_score: finalReading.energy_score,
     tags: finalReading.tags || [],
@@ -312,7 +322,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
     week_start: loaded.weekStart,
     week_ref: loaded.weekRef,
     cached: false,
-    partial,
+    partial: finalPartial,
     missing_sources: loaded.missingSources,
     sources_used: loaded.sourcesUsed,
     reading_id: saved.id,

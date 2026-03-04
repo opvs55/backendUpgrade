@@ -47,8 +47,9 @@ export const generateSynthesis = async ({ context }) => {
   }
 
   const prompt = `Você é um oráculo sábio e detalhista em português brasileiro.
-Com base no contexto abaixo, produza uma leitura semanal integrando tarot, numerologia, runas, i ching e padrões recentes.
+Com base no contexto abaixo, produza uma leitura semanal integrando tarot, numerologia, runas e i ching.
 Tom: acolhedor, claro, prático, sem fatalismo.
+A leitura deve funcionar apenas com os módulos disponíveis no contexto atual desta semana; não dependa de histórico de leituras anteriores.
 Se algum sinal estiver ausente no contexto, escreva literalmente "Sinal ausente nesta semana" e continue com os demais sinais disponíveis.
 Nunca invente cartas, leituras ou dados não fornecidos no contexto.
 Não mencione tecnologia, API, JSON, backend, banco de dados, módulos ou regras internas.
