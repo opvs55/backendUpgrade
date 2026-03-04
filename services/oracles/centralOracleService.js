@@ -86,24 +86,57 @@ const buildBasicProfile = (profile) => ({
   username: profile?.username || null,
 });
 
-const buildFallbackCentralReading = () => ({
+const extractFallbackSignals = (modulesSnapshot, missingSources) => {
+  const signals = [];
+  const tarot = modulesSnapshot.tarot_weekly;
+  const runes = modulesSnapshot.runes_weekly;
+  const iching = modulesSnapshot.iching_weekly;
+  const numerologyTime = modulesSnapshot.numerology_time;
+
+  if (tarot?.card_name || tarot?.card?.name) {
+    const cardName = tarot.card_name || tarot.card?.name;
+    signals.push(`Tarot semanal aponta ${cardName} como arquétipo de foco para suas decisões.`);
+  }
+
+  if (runes?.rune_name || runes?.rune?.name) {
+    const runeName = runes.rune_name || runes.rune?.name;
+    signals.push(`Runas destacam ${runeName}, pedindo atitude consciente e leitura dos sinais do dia.`);
+  }
+
+  if (iching?.hexagram_number || iching?.hexagram?.number) {
+    const hexagram = iching.hexagram_number || iching.hexagram?.number;
+    signals.push(`I Ching indica o hexagrama ${hexagram} como movimento-base para conduzir a semana.`);
+  }
+
+  if (numerologyTime?.month_energy) {
+    signals.push(`Numerologia temporal marca energia ${numerologyTime.month_energy}, favorecendo consistência e ajustes graduais.`);
+  }
+
+  if (signals.length === 0) {
+    signals.push('A leitura parcial sugere foco no essencial, organização leve e respostas objetivas.');
+  }
+
+  if (missingSources.length > 0) {
+    signals.push(`Fontes pendentes nesta semana: ${missingSources.join(', ')}.`);
+  }
+
+  return signals;
+};
+
+const buildFallbackCentralReading = ({ modulesSnapshot, missingSources }) => ({
   title: 'Oráculo Central da Semana',
-  one_liner: 'Siga com foco no essencial e ajustes pequenos, mas consistentes.',
-  overview: 'A síntese completa não ficou disponível agora, então esta leitura parcial prioriza estabilidade e clareza prática para a semana.',
-  signals: [
-    'Revise compromissos e mantenha apenas o que sustenta sua energia.',
-    'Dê preferência a decisões simples e objetivas.',
-    'Faça uma pausa curta antes de responder temas importantes.',
-  ],
-  synthesis: 'Mesmo sem todos os detalhes integrados por IA, você ganha força ao combinar presença, organização e ritmo sustentável.',
+  one_liner: 'Leitura gerada em modo resiliente com os módulos disponíveis desta semana.',
+  overview: 'A integração por IA falhou temporariamente, mas a síntese foi montada por template para manter continuidade e direção prática.',
+  signals: extractFallbackSignals(modulesSnapshot, missingSources),
+  synthesis: 'Com base nas camadas ativas (tarot, runas, I Ching e numerologia temporal), o melhor caminho é constância com decisões simples e revisão diária de prioridades.',
   practical_guidance: [
-    'Escolha uma prioridade central para a semana.',
-    'Mantenha um check-in diário rápido de foco e energia.',
-    'Finalize pendências antigas antes de iniciar novas frentes.',
+    'Escolha uma frente principal e limite dispersões.',
+    'Use os sinais da semana para calibrar timing de conversas e entregas.',
+    'No fim do dia, revise energia, pendências e próximos passos.',
   ],
-  closing: 'Simplicidade com constância será sua melhor estratégia neste ciclo.',
-  tags: ['oraculo-central', 'semana', 'parcial'],
-  energy_score: 70,
+  closing: 'Mesmo em modo parcial, há clareza suficiente para avançar com estabilidade.',
+  tags: ['oraculo-central', 'semana', 'fallback'],
+  energy_score: 68,
 });
 
 const safeFetch = async ({ userId, weekStart, sourceName, fallbackValue, fetcher }) => {
@@ -221,7 +254,8 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       week_start: weekStart,
       week_ref: weekRef,
       cached: true,
-      partial: Boolean(existingWeeklyUnified.partial),
+      partial: Boolean(existingInputs.partial),
+      ai_failed: Boolean(existingInputs.ai_failed),
       missing_sources: existingInputs.missing_sources || [],
       sources_used: existingInputs.sources_used || [],
       reading_id: existingWeeklyUnified.id,
@@ -281,28 +315,36 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       error: error?.message || 'UNKNOWN_GEMINI_ERROR',
     });
     aiFallbackUsed = true;
-    finalReading = buildFallbackCentralReading();
+    finalReading = buildFallbackCentralReading({
+      modulesSnapshot,
+      missingSources: loaded.missingSources,
+    });
   }
 
   const finalPartial = partial || aiFallbackUsed;
+  const generatedAt = new Date().toISOString();
 
   const payload = {
     user_id: userId,
     week_start: loaded.weekStart,
     week_ref: loaded.weekRef,
+    focus_area: input.focus_area || null,
+    question: input.question || null,
     inputs_snapshot: {
       week_start: loaded.weekStart,
       week_ref: loaded.weekRef,
-      generated_at: new Date().toISOString(),
+      generated_at: generatedAt,
+      cached: false,
+      partial: finalPartial,
+      ai_failed: aiFallbackUsed,
       missing_sources: loaded.missingSources,
       sources_used: loaded.sourcesUsed,
     },
     modules_snapshot: modulesSnapshot,
-    partial: finalPartial,
     final_reading: finalReading,
     energy_score: finalReading.energy_score,
     tags: finalReading.tags || [],
-    updated_at: new Date().toISOString(),
+    updated_at: generatedAt,
   };
 
   let saved;
@@ -323,6 +365,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
     week_ref: loaded.weekRef,
     cached: false,
     partial: finalPartial,
+    ai_failed: aiFallbackUsed,
     missing_sources: loaded.missingSources,
     sources_used: loaded.sourcesUsed,
     reading_id: saved.id,
