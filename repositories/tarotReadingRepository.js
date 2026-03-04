@@ -1,7 +1,9 @@
-import { supabaseAnonClient } from '../config/supabaseClient.js';
+import { supabaseAnonClient, supabaseUserClient } from '../config/supabaseClient.js';
 
-export const listRecentTarotReadingsByUserId = async (userId, limit = 10) => {
-  const { data, error } = await supabaseAnonClient
+const getClient = (accessToken) => (accessToken ? supabaseUserClient(accessToken) : supabaseAnonClient);
+
+export const listRecentTarotReadingsByUserId = async (userId, limit = 10, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('readings')
     .select('*')
     .eq('user_id', userId)

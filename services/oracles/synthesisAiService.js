@@ -1,36 +1,62 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 
-const fallbackReading = ({ focusArea, question, sourcesUsed }) => ({
-  title: 'Oráculo do Grimório (semanal)',
-  overview: 'Esta semana pede foco prático, constância emocional e decisões conscientes.',
-  strengths: ['Clareza na priorização', 'Capacidade de adaptação com propósito'],
-  cautions: ['Evite dispersar energia em muitas frentes', 'Não adie conversas importantes'],
-  guidance: ['Defina um objetivo semanal principal', 'Revise diariamente pequenos avanços'],
-  focus: focusArea || 'geral',
-  closing_message: question ? `Pergunta considerada: ${question}` : 'Use esta leitura como bússola de autoconhecimento para a semana.',
-  sources_used: sourcesUsed,
+const fallbackReading = () => ({
+  title: 'Oráculo Central da Semana',
+  one_liner: 'Uma semana de alinhamento: foco, simplicidade e decisões com propósito.',
+  overview: 'O momento favorece estabilidade emocional e ação consistente. Menos pressa, mais direção.',
+  signals: [
+    'Observe padrões que se repetem nas suas escolhas recentes.',
+    'Priorize o que fortalece sua energia em vez do que apenas ocupa tempo.',
+    'Converse com clareza antes de assumir novos compromissos.',
+  ],
+  synthesis: 'Quando você une intuição com rotina prática, a semana flui com menos ruído e mais resultado.',
+  practical_guidance: [
+    'Defina 1 prioridade principal para a semana.',
+    'Reserve um bloco diário curto para revisão emocional e foco.',
+    'Feche ciclos pendentes antes de abrir novos.',
+  ],
+  closing: 'Confie no seu ritmo: consistência silenciosa é a sua força agora.',
+  tags: ['oraculo-central', 'semana', 'clareza', 'equilibrio'],
+  energy_score: 74,
 });
 
-export const generateSynthesis = async ({ context, focusArea, question, sourcesUsed }) => {
+const sanitizeReading = (value = {}) => {
+  const fallback = fallbackReading();
+  return {
+    title: value.title || fallback.title,
+    one_liner: value.one_liner || fallback.one_liner,
+    overview: value.overview || fallback.overview,
+    signals: Array.isArray(value.signals) ? value.signals.slice(0, 6) : fallback.signals,
+    synthesis: value.synthesis || fallback.synthesis,
+    practical_guidance: Array.isArray(value.practical_guidance) ? value.practical_guidance.slice(0, 6) : fallback.practical_guidance,
+    closing: value.closing || fallback.closing,
+    tags: Array.isArray(value.tags) ? value.tags.slice(0, 10) : fallback.tags,
+    energy_score: Number.isFinite(Number(value.energy_score)) ? Math.max(0, Math.min(100, Number(value.energy_score))) : fallback.energy_score,
+  };
+};
+
+export const generateSynthesis = async ({ context }) => {
   if (!genAI) {
-    return fallbackReading({ focusArea, question, sourcesUsed });
+    return fallbackReading();
   }
 
-  const prompt = `Retorne APENAS JSON válido para o "Oráculo do Grimório" semanal em pt-BR.
-Integre Tarot semanal + Numerologia base/semanal + Runas semanais + I Ching semanal + histórico recente de Tarot.
-Evite fatalismo e seja prático.
-Contexto: ${JSON.stringify(context)}
-Estrutura:
+  const prompt = `Você é um oráculo sábio e detalhista em português brasileiro.
+Com base no contexto abaixo, produza uma leitura semanal integrando tarot, numerologia, runas, i ching e padrões recentes.
+Tom: acolhedor, claro, prático, sem fatalismo.
+Não mencione tecnologia, API, JSON, backend, banco de dados, módulos ou regras internas.
+Retorne APENAS um JSON válido no formato:
 {
-  "title":"string",
-  "overview":"string",
-  "strengths":["string"],
-  "cautions":["string"],
-  "guidance":["string"],
-  "focus":"string",
-  "closing_message":"string",
-  "sources_used":["tarot_weekly","numerology_base","numerology_weekly","runes_weekly","iching_weekly","tarot_history_summary"]
-}`;
+  "title": "string",
+  "one_liner": "string",
+  "overview": "string",
+  "signals": ["string"],
+  "synthesis": "string",
+  "practical_guidance": ["string"],
+  "closing": "string",
+  "tags": ["string"],
+  "energy_score": 0
+}
+Contexto: ${JSON.stringify(context)}`;
 
   try {
     const model = genAI.getGenerativeModel({ model: geminiModelName });
@@ -38,10 +64,13 @@ Estrutura:
     const text = result.response.text();
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('JSON ausente');
-    const parsed = JSON.parse(text.slice(start, end + 1));
-    return { ...parsed, sources_used: sourcesUsed };
+
+    if (start === -1 || end === -1) {
+      throw new Error('JSON ausente');
+    }
+
+    return sanitizeReading(JSON.parse(text.slice(start, end + 1)));
   } catch {
-    return fallbackReading({ focusArea, question, sourcesUsed });
+    return fallbackReading();
   }
 };

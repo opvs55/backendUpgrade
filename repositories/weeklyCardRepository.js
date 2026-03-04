@@ -1,7 +1,9 @@
-import { supabaseAnonClient } from '../config/supabaseClient.js';
+import { supabaseAnonClient, supabaseUserClient } from '../config/supabaseClient.js';
 
-export const getWeeklyCardByUserAndWeekRef = async (userId, weekRef) => {
-  const { data, error } = await supabaseAnonClient
+const getClient = (accessToken) => (accessToken ? supabaseUserClient(accessToken) : supabaseAnonClient);
+
+export const getWeeklyCardByUserAndWeekRef = async (userId, weekRef, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('weekly_cards')
     .select('*')
     .eq('user_id', userId)
@@ -14,8 +16,8 @@ export const getWeeklyCardByUserAndWeekRef = async (userId, weekRef) => {
   return data;
 };
 
-export const getWeeklyCardByUserAndWeekStart = async (userId, weekStart) => {
-  const { data, error } = await supabaseAnonClient
+export const getWeeklyCardByUserAndWeekStart = async (userId, weekStart, accessToken) => {
+  const { data, error } = await getClient(accessToken)
     .from('weekly_cards')
     .select('*')
     .eq('user_id', userId)

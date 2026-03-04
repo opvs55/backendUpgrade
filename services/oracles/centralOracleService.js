@@ -5,14 +5,38 @@ import { getWeeklyCardByUserAndWeekStart } from '../../repositories/weeklyCardRe
 import { getOracleWeeklyModule } from '../../repositories/oracleWeeklyModuleRepository.js';
 import { listRecentTarotReadingsByUserId } from '../../repositories/tarotReadingRepository.js';
 import {
-  createUnifiedReading,
   getUnifiedReadingByUserAndWeekStart,
-  updateUnifiedReadingById,
+  upsertUnifiedReading,
 } from '../../repositories/unifiedReadingRepository.js';
 import { generateSynthesis } from './synthesisAiService.js';
 import { generateRunesWeekly } from './runesWeeklyService.js';
 import { generateIchingWeekly } from './ichingWeeklyService.js';
-import { getIsoWeekInfo } from '../../utils/week.js';
+import { getWeekRef, getWeekStartISO } from '../../utils/week.js';
+
+const reduceToDigit = (value) => {
+  let current = Number(value) || 0;
+  while (current > 9 && ![11, 22, 33].includes(current)) {
+    current = String(current)
+      .split('')
+      .map((digit) => Number(digit))
+      .reduce((acc, digit) => acc + digit, 0);
+  }
+  return current;
+};
+
+const buildNumerologyTime = (date = new Date()) => {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  const yearUniversal = reduceToDigit(year);
+  const monthEnergy = reduceToDigit(month + yearUniversal);
+
+  return {
+    year_universal: yearUniversal,
+    month,
+    month_energy: monthEnergy,
+    interpretation_notes: `Ano universal ${yearUniversal} somado ao mês ${month} indica vibração ${monthEnergy}, com convite à ação equilibrada e revisão prática de prioridades.`,
+  };
+};
 
 const mapRequirements = ({ profile, numerologyBase, numerologyWeekly, weeklyCard, runesWeekly, ichingWeekly, weekStart, weekRef }) => {
   const requirementsStatus = {
@@ -28,19 +52,11 @@ const mapRequirements = ({ profile, numerologyBase, numerologyWeekly, weeklyCard
     .filter(([, ok]) => !ok)
     .map(([key]) => key);
 
-  const canGenerate =
-    requirementsStatus.has_profile
-    && requirementsStatus.has_numerology_base
-    && requirementsStatus.has_weekly_tarot_card
-    && requirementsStatus.has_numerology_weekly
-    && requirementsStatus.has_runes_weekly
-    && requirementsStatus.has_iching_weekly;
-
   return {
     week_start: weekStart,
     week_ref: weekRef,
     requirements_status: requirementsStatus,
-    can_generate_general_reading: canGenerate,
+    can_generate_general_reading: true,
     missing_requirements: missingRequirements,
     suggested_actions: [
       { path: '/tarot', label: 'Tirar carta semanal' },
@@ -52,26 +68,16 @@ const mapRequirements = ({ profile, numerologyBase, numerologyWeekly, weeklyCard
   };
 };
 
-const summarizeTarotHistory = (readings = []) => {
-  if (!readings.length) {
-    return {
-      total: 0,
-      latest_titles: [],
-      note: 'Sem histórico recente de tarot.',
-    };
-  }
-
-  return {
-    total: readings.length,
-    latest_titles: readings
-      .slice(0, 5)
-      .map((reading) => reading?.title || reading?.spread_type || reading?.question || 'Leitura sem título'),
-    note: 'Resumo simples para padrões recentes.',
-  };
+const normalizeModulePayload = (moduleRow) => {
+  if (!moduleRow) return null;
+  if (moduleRow.status && moduleRow.status !== 'ok') return null;
+  return moduleRow.output_payload || moduleRow;
 };
 
 const loadWeeklyContext = async (userId, accessToken) => {
-  const { weekStart, weekRef } = getIsoWeekInfo();
+  const now = new Date();
+  const weekStart = getWeekStartISO(now);
+  const weekRef = getWeekRef(now);
 
   const [
     profile,
@@ -82,13 +88,13 @@ const loadWeeklyContext = async (userId, accessToken) => {
     ichingWeekly,
     tarotReadings,
   ] = await Promise.all([
-    getProfileById(userId),
-    getLatestNumerologyByUserId(userId),
-    getNumerologyWeeklyByUserAndWeekStart(userId, weekStart),
-    getWeeklyCardByUserAndWeekStart(userId, weekStart),
+    getProfileById(userId, accessToken),
+    getLatestNumerologyByUserId(userId, accessToken),
+    getNumerologyWeeklyByUserAndWeekStart(userId, weekStart, accessToken),
+    getWeeklyCardByUserAndWeekStart(userId, weekStart, accessToken),
     getOracleWeeklyModule(userId, weekStart, 'runes_weekly', accessToken),
     getOracleWeeklyModule(userId, weekStart, 'iching_weekly', accessToken),
-    listRecentTarotReadingsByUserId(userId, 10),
+    listRecentTarotReadingsByUserId(userId, 5, accessToken),
   ]);
 
   return {
@@ -98,9 +104,10 @@ const loadWeeklyContext = async (userId, accessToken) => {
     numerologyBase,
     numerologyWeekly,
     weeklyCard,
-    runesWeekly,
-    ichingWeekly,
-    tarotReadings,
+    runesWeekly: normalizeModulePayload(runesWeekly),
+    ichingWeekly: normalizeModulePayload(ichingWeekly),
+    tarotReadings: tarotReadings.slice(0, 5),
+    numerologyTime: buildNumerologyTime(now),
   };
 };
 
@@ -120,128 +127,77 @@ export const getCentralOracleRequirements = async (userId, accessToken) => {
 };
 
 export const generateCentralReading = async (userId, input = {}, accessToken) => {
-  if (input.force_regenerate_modules) {
-    await Promise.all([
-      generateRunesWeekly(userId, { question: input.question, force_regenerate: true }, accessToken),
-      generateIchingWeekly(userId, { question: input.question, force_regenerate: true }, accessToken),
-    ]);
-  }
-  const loaded = await loadWeeklyContext(userId, accessToken);
-  const requirements = mapRequirements({
-    profile: loaded.profile,
-    numerologyBase: loaded.numerologyBase,
-    numerologyWeekly: loaded.numerologyWeekly,
-    weeklyCard: loaded.weeklyCard,
-    runesWeekly: loaded.runesWeekly,
-    ichingWeekly: loaded.ichingWeekly,
-    weekStart: loaded.weekStart,
-    weekRef: loaded.weekRef,
-  });
+  const now = new Date();
+  const weekStart = getWeekStartISO(now);
+  const weekRef = getWeekRef(now);
 
-  if (!requirements.can_generate_general_reading) {
+  const existingWeeklyUnified = await getUnifiedReadingByUserAndWeekStart(userId, weekStart, accessToken);
+  if (existingWeeklyUnified && input.force_regenerate_final !== true) {
     return {
-      can_generate: false,
-      partial: false,
-      week_start: loaded.weekStart,
-      week_ref: loaded.weekRef,
-      missing_requirements: requirements.missing_requirements,
-      suggested_actions: requirements.suggested_actions,
-      sources_used: [],
-      message: 'Complete os requisitos mínimos da semana para gerar o Oráculo do Grimório.',
-    };
-  }
-
-  const inputsSnapshot = {
-    question: input.question || null,
-    focus_area: input.focus_area || 'geral',
-    week_start: loaded.weekStart,
-    week_ref: loaded.weekRef,
-    force_regenerate_modules: Boolean(input.force_regenerate_modules),
-    force_regenerate_final: Boolean(input.force_regenerate_final),
-  };
-
-  const modulesSnapshot = {
-    tarot_weekly: loaded.weeklyCard,
-    numerology_base: loaded.numerologyBase,
-    numerology_weekly: loaded.numerologyWeekly,
-    runes_weekly: loaded.runesWeekly?.output_payload || null,
-    iching_weekly: loaded.ichingWeekly?.output_payload || null,
-    tarot_history_summary: summarizeTarotHistory(loaded.tarotReadings.slice(0, 10)),
-  };
-
-  const sourcesUsed = Object.entries(modulesSnapshot)
-    .filter(([, value]) => Boolean(value) && (!(Array.isArray(value)) || value.length > 0))
-    .map(([key]) => key);
-
-  const existingWeeklyUnified = await getUnifiedReadingByUserAndWeekStart(userId, loaded.weekStart);
-  if (existingWeeklyUnified && !input.force_regenerate_final) {
-    return {
-      can_generate: true,
-      partial: false,
-      week_start: loaded.weekStart,
-      week_ref: loaded.weekRef,
-      missing_requirements: [],
-      sources_used: sourcesUsed,
+      week_start: weekStart,
+      week_ref: weekRef,
+      cached: true,
+      reading_id: existingWeeklyUnified.id,
       final_reading: existingWeeklyUnified.final_reading,
       energy_score: existingWeeklyUnified.energy_score,
       tags: existingWeeklyUnified.tags || [],
-      saved_reading_id: existingWeeklyUnified.id,
-      cached: true,
+      unified_reading: existingWeeklyUnified,
     };
   }
+
+  if (input.force_regenerate_modules) {
+    await Promise.all([
+      generateRunesWeekly(userId, { force_regenerate: true }, accessToken),
+      generateIchingWeekly(userId, { force_regenerate: true }, accessToken),
+    ]);
+  }
+
+  const loaded = await loadWeeklyContext(userId, accessToken);
+
+  const modulesSnapshot = {
+    tarot_weekly: loaded.weeklyCard,
+    numerology_time: loaded.numerologyTime,
+    numerology_base: loaded.numerologyBase,
+    numerology_weekly: loaded.numerologyWeekly,
+    runes_weekly: loaded.runesWeekly,
+    iching_weekly: loaded.ichingWeekly,
+    recent_tarot_history: loaded.tarotReadings,
+  };
 
   const finalReading = await generateSynthesis({
     context: {
-      profile: loaded.profile,
-      question: input.question || null,
-      focus_area: input.focus_area || 'geral',
-      modules_snapshot: modulesSnapshot,
-      week_ref: loaded.weekRef,
       week_start: loaded.weekStart,
-      recent_tarot_readings: loaded.tarotReadings.slice(0, 10),
+      week_ref: loaded.weekRef,
+      profile: loaded.profile,
+      modules_snapshot: modulesSnapshot,
     },
-    focusArea: input.focus_area || 'geral',
-    question: input.question,
-    sourcesUsed,
   });
 
-  const energyScore = Math.max(0, Math.min(100, 50 + sourcesUsed.length * 8));
-  const tags = ['oraculo_grimorio', loaded.weekRef, input.focus_area || 'geral', ...sourcesUsed].slice(0, 8);
-
-  let savedReadingId = null;
-  if (input.save_result !== false) {
-    const payload = {
-      user_id: userId,
-      week_start: loaded.weekStart,
-      week_ref: loaded.weekRef,
-      focus_area: input.focus_area || 'geral',
-      question: input.question || null,
-      inputs_snapshot: inputsSnapshot,
-      modules_snapshot: modulesSnapshot,
-      final_reading: finalReading,
-      energy_score: energyScore,
-      tags,
-    };
-
-    const saved = existingWeeklyUnified
-      ? await updateUnifiedReadingById(existingWeeklyUnified.id, payload)
-      : await createUnifiedReading(payload);
-
-    savedReadingId = saved.id;
-  }
-
-  return {
-    can_generate: true,
-    partial: false,
+  const payload = {
+    user_id: userId,
     week_start: loaded.weekStart,
     week_ref: loaded.weekRef,
-    missing_requirements: [],
-    suggested_actions: requirements.suggested_actions,
-    sources_used: sourcesUsed,
+    inputs_snapshot: {
+      week_start: loaded.weekStart,
+      week_ref: loaded.weekRef,
+      generated_at: new Date().toISOString(),
+    },
+    modules_snapshot: modulesSnapshot,
     final_reading: finalReading,
-    energy_score: energyScore,
-    tags,
-    saved_reading_id: savedReadingId,
+    energy_score: finalReading.energy_score,
+    tags: finalReading.tags || [],
+    updated_at: new Date().toISOString(),
+  };
+
+  const saved = await upsertUnifiedReading(payload, accessToken);
+
+  return {
+    week_start: loaded.weekStart,
+    week_ref: loaded.weekRef,
     cached: false,
+    reading_id: saved.id,
+    final_reading: saved.final_reading,
+    energy_score: saved.energy_score,
+    tags: saved.tags || [],
   };
 };
