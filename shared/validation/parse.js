@@ -7,7 +7,7 @@ export const parseWithSchema = (schema, payload, context = 'payload') => {
     throw new AppError(`Dados inválidos em ${context}.`, {
       code: ERROR_CODES.VALIDATION_ERROR,
       status: 400,
-      details: result.error.flatten(),
+      details: result.error.issues,
     });
   }
   return result.data;
