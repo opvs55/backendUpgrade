@@ -1,17 +1,23 @@
 import { getProfileById } from '../../repositories/profileRepository.js';
 import { getLatestNumerologyByUserId } from '../../repositories/numerologyRepository.js';
 import { getNumerologyWeeklyByUserAndWeekStart } from '../../repositories/numerologyWeeklyRepository.js';
-import { getWeeklyCardByUserAndWeekStart } from '../../repositories/weeklyCardRepository.js';
+import { getWeeklyCardByUserAndWeekRef } from '../../repositories/weeklyCardRepository.js';
 import { getOracleWeeklyModule } from '../../repositories/oracleWeeklyModuleRepository.js';
 import {
-  getUnifiedReadingByUserAndWeekStart,
+  getUnifiedReadingByUserAndWeekRef,
   upsertUnifiedReading,
 } from '../../repositories/unifiedReadingRepository.js';
 import { generateSynthesis } from './synthesisAiService.js';
 import { generateRunesWeekly } from './runesWeeklyService.js';
 import { generateIchingWeekly } from './ichingWeeklyService.js';
-import { getWeekRef, getWeekStartISO } from '../../utils/week.js';
+import { getWeekRef, getWeekStartISO, getWeekStartFromWeekRef } from '../../utils/week.js';
 import { logger } from '../../shared/logging/logger.js';
+import { AppError } from '../../shared/http/AppError.js';
+import { ERROR_CODES } from '../../shared/http/errorCodes.js';
+import {
+  normalizeCentralFinalReading,
+  validateCentralGenerateResponse,
+} from '../../shared/http/centralReadingContract.js';
 
 const reduceToDigit = (value) => {
   let current = Number(value) || 0;
@@ -143,15 +149,15 @@ const extractFallbackSignals = (modulesSnapshot) => {
 
   if (iching?.hexagram_number || iching?.hexagram?.number) {
     const hexagram = iching.hexagram_number || iching.hexagram?.number;
-    signals.iching = `I Ching indica o hexagrama ${hexagram} como movimento-base para conduzir a semana.`;
+    signals.i_ching = `I Ching indica o hexagrama ${hexagram} como movimento-base para conduzir a semana.`;
   } else {
-    signals.iching = 'Sinal ausente nesta semana';
+    signals.i_ching = 'Sinal ausente nesta semana';
   }
 
   if (numerologyTime?.month_energy) {
-    signals.numerology_time = `Numerologia temporal marca energia ${numerologyTime.month_energy}, favorecendo consistência e ajustes graduais.`;
+    signals.numerology = `Numerologia temporal marca energia ${numerologyTime.month_energy}, favorecendo consistência e ajustes graduais.`;
   } else {
-    signals.numerology_time = 'Sinal ausente nesta semana';
+    signals.numerology = 'Sinal ausente nesta semana';
   }
 
   return signals;
@@ -171,13 +177,18 @@ const buildFallbackCentralReading = ({ modulesSnapshot }) => {
   const firstAction = actions[0] || 'Sinal ausente nesta semana';
 
   return {
-    title: 'Oráculo Central da Semana',
+    title: 'Leitura Geral Semanal',
     one_liner: `Leitura em modo resiliente com foco em ${firstTheme}.`,
-    overview: `A integração por IA falhou temporariamente. Síntese montada com os dados disponíveis desta semana, priorizando ${firstAction}.`,
+    overview: [
+      'A integração por IA falhou temporariamente.',
+      `Síntese montada com os dados disponíveis desta semana, priorizando ${firstAction}.`,
+    ],
     signals: extractFallbackSignals(modulesSnapshot),
     synthesis: {
       convergences: themes.length > 0 ? themes.slice(0, 5) : ['Sinal ausente nesta semana'],
       tensions: themes.length > 1 ? themes.slice(1, 4).map((theme) => `Equilibrar ${theme} com limites realistas.`) : ['Sinal ausente nesta semana'],
+      theme_of_week: firstTheme,
+      hidden_lesson: themes[1] || 'Pequenos ajustes consistentes evitam sobrecarga.',
     },
     practical_guidance: {
       do: actions.length > 0 ? actions.slice(0, 4) : ['Sinal ausente nesta semana'],
@@ -220,10 +231,20 @@ const safeFetch = async ({ userId, weekStart, sourceName, fallbackValue, fetcher
   }
 };
 
-const loadWeeklyContext = async (userId, accessToken) => {
+const assertCentralResponse = (payload) => {
+  try {
+    return validateCentralGenerateResponse(payload);
+  } catch (error) {
+    throw new AppError('Contrato inválido para leitura geral semanal.', {
+      code: ERROR_CODES.VALIDATION_ERROR,
+      status: 422,
+      details: error?.issues || [error?.message],
+    });
+  }
+};
+
+const loadWeeklyContext = async (userId, accessToken, { weekStart, weekRef }) => {
   const now = new Date();
-  const weekStart = getWeekStartISO(now);
-  const weekRef = getWeekRef(now);
   const [profile, numerologyBase] = await Promise.all([
     safeOptionalFetch({
       sourceName: 'profile',
@@ -250,7 +271,7 @@ const loadWeeklyContext = async (userId, accessToken) => {
       weekStart,
       sourceName: SOURCE_KEYS.weeklyCard,
       fallbackValue: null,
-      fetcher: () => getWeeklyCardByUserAndWeekStart(userId, weekStart, accessToken),
+      fetcher: () => getWeeklyCardByUserAndWeekRef(userId, weekRef, accessToken),
     }),
     safeFetch({
       userId,
@@ -294,7 +315,10 @@ const loadWeeklyContext = async (userId, accessToken) => {
 };
 
 export const getCentralOracleRequirements = async (userId, accessToken) => {
-  const loaded = await loadWeeklyContext(userId, accessToken);
+  const now = new Date();
+  const weekStart = getWeekStartISO(now);
+  const weekRef = getWeekRef(now);
+  const loaded = await loadWeeklyContext(userId, accessToken, { weekStart, weekRef });
 
   return mapRequirements({
     profile: loaded.profile,
@@ -309,26 +333,56 @@ export const getCentralOracleRequirements = async (userId, accessToken) => {
 };
 
 export const generateCentralReading = async (userId, input = {}, accessToken) => {
-  const now = new Date();
-  const weekStart = getWeekStartISO(now);
-  const weekRef = getWeekRef(now);
+  const weekRef = input.week_ref;
+  let weekStart;
+  try {
+    weekStart = getWeekStartFromWeekRef(weekRef);
+  } catch (error) {
+    throw new AppError(error.message, {
+      code: ERROR_CODES.VALIDATION_ERROR,
+      status: 422,
+      details: [{ field: 'week_ref', value: weekRef }],
+    });
+  }
 
-  const existingWeeklyUnified = await safeOptionalFetch({
-    sourceName: 'unified_readings_lookup',
-    fetcher: () => getUnifiedReadingByUserAndWeekStart(userId, weekStart, accessToken),
-    loggerContext: { userId, weekStart },
-  });
-  if (existingWeeklyUnified && input.force_regenerate_final !== true) {
-    const existingInputs = existingWeeklyUnified.inputs_snapshot || {};
-    return {
-      week_start: weekStart,
-      week_ref: weekRef,
+  let existingWeeklyUnified;
+  try {
+    existingWeeklyUnified = await getUnifiedReadingByUserAndWeekRef(userId, weekRef, accessToken);
+  } catch (error) {
+    logger.error('central reading stage failed: lookup unified_readings', {
+      stage: 'lookup unified_readings',
+      userId,
+      weekRef,
+      error: error?.message || 'UNKNOWN_LOOKUP_ERROR',
+    });
+    throw new AppError('Falha ao consultar leitura geral semanal existente.', {
+      code: ERROR_CODES.SERVICE_UNAVAILABLE,
+      status: 503,
+      details: [{ stage: 'lookup unified_readings', message: error?.message }],
+    });
+  }
+
+  if (existingWeeklyUnified) {
+    const fallbackSignals = extractFallbackSignals(existingWeeklyUnified.modules_snapshot || {});
+    const finalReading = normalizeCentralFinalReading(existingWeeklyUnified.final_reading || {}, {
+      fallbackSignals,
+    });
+    const existingStatus = ['ok', 'partial'].includes(existingWeeklyUnified.status)
+      ? existingWeeklyUnified.status
+      : (Boolean(existingWeeklyUnified.ai_failed) ||
+        Boolean(existingWeeklyUnified.inputs_snapshot?.partial)
+        ? 'partial'
+        : 'ok');
+
+    return assertCentralResponse({
+      status: existingStatus,
       cached: true,
-      partial: Boolean(existingInputs.partial),
-      ai_failed: Boolean(existingInputs.ai_failed),
+      week_ref: weekRef,
+      can_generate: true,
+      ai_failed: Boolean(existingWeeklyUnified.ai_failed),
       reading_id: existingWeeklyUnified.id,
-      final_reading: existingWeeklyUnified.final_reading,
-    };
+      final_reading: finalReading,
+    });
   }
 
   if (input.force_regenerate_modules) {
@@ -351,7 +405,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
     }
   }
 
-  const loaded = await loadWeeklyContext(userId, accessToken);
+  const loaded = await loadWeeklyContext(userId, accessToken, { weekStart, weekRef });
 
   const numerologyWeeklyForSnapshot = loaded.numerologyWeekly?.result_payload
     ? {
@@ -371,11 +425,12 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
   };
 
   let aiFallbackUsed = false;
-  const partial = loaded.missingSources.length > 0;
+  const partialBySource = loaded.missingSources.length > 0;
+  const fallbackSignals = extractFallbackSignals(modulesSnapshot);
 
-  let finalReading;
+  let finalReadingCandidate;
   try {
-    finalReading = await generateSynthesis({
+    finalReadingCandidate = await generateSynthesis({
       context: {
         week_start: loaded.weekStart,
         week_ref: loaded.weekRef,
@@ -391,16 +446,35 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       error: error?.message || 'UNKNOWN_GEMINI_ERROR',
     });
     aiFallbackUsed = true;
-    finalReading = buildFallbackCentralReading({ modulesSnapshot });
+    finalReadingCandidate = buildFallbackCentralReading({ modulesSnapshot });
   }
 
-  const finalPartial = partial || aiFallbackUsed;
+  let finalReading;
+  try {
+    finalReading = normalizeCentralFinalReading(finalReadingCandidate, { fallbackSignals });
+  } catch (normalizeError) {
+    logger.error('central reading stage failed: normalize final_reading', {
+      stage: 'normalize final_reading',
+      userId,
+      weekStart: loaded.weekStart,
+      error: normalizeError?.message || 'UNKNOWN_NORMALIZE_ERROR',
+    });
+    aiFallbackUsed = true;
+    finalReading = normalizeCentralFinalReading(buildFallbackCentralReading({ modulesSnapshot }), {
+      fallbackSignals,
+    });
+  }
+
+  const status = partialBySource || aiFallbackUsed ? 'partial' : 'ok';
   const generatedAt = new Date().toISOString();
 
   const payload = {
     user_id: userId,
     week_start: loaded.weekStart,
     week_ref: loaded.weekRef,
+    status,
+    cached: false,
+    ai_failed: aiFallbackUsed,
     focus_area: input.focus_area || null,
     question: input.question || null,
     inputs_snapshot: {
@@ -408,7 +482,7 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       week_ref: loaded.weekRef,
       generated_at: generatedAt,
       cached: false,
-      partial: finalPartial,
+      partial: status === 'partial',
       ai_failed: aiFallbackUsed,
       missing_sources: loaded.missingSources,
       sources_used: loaded.sourcesUsed,
@@ -430,31 +504,22 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
       weekStart: loaded.weekStart,
       error: error?.message || 'UNKNOWN_SAVE_ERROR',
     });
-    const fallbackReadingId = `unsaved-${loaded.weekStart}-${userId}`;
-    logger.warn('central reading returning unsaved fallback due persistence failure', {
-      userId,
-      weekStart: loaded.weekStart,
-      fallbackReadingId,
+    throw new AppError('Falha ao persistir leitura geral semanal.', {
+      code: ERROR_CODES.SERVICE_UNAVAILABLE,
+      status: 503,
+      details: [{ stage: 'save unified_readings', message: error?.message }],
     });
-
-    return {
-      week_start: loaded.weekStart,
-      week_ref: loaded.weekRef,
-      cached: false,
-      partial: true,
-      ai_failed: true,
-      reading_id: fallbackReadingId,
-      final_reading: finalReading,
-    };
   }
 
-  return {
-    week_start: loaded.weekStart,
-    week_ref: loaded.weekRef,
+  return assertCentralResponse({
+    status,
     cached: false,
-    partial: finalPartial,
+    week_ref: loaded.weekRef,
+    can_generate: true,
     ai_failed: aiFallbackUsed,
     reading_id: saved.id,
-    final_reading: saved.final_reading,
-  };
+    final_reading: normalizeCentralFinalReading(saved.final_reading || finalReading, {
+      fallbackSignals,
+    }),
+  });
 };

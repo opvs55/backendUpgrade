@@ -1,41 +1,41 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
+import { normalizeCentralFinalReading } from '../../shared/http/centralReadingContract.js';
 
 const fallbackReading = () => ({
-  title: 'Oráculo Central da Semana',
-  one_liner: 'Uma semana de alinhamento: foco, simplicidade e decisões com propósito.',
-  overview: 'O momento favorece estabilidade emocional e ação consistente. Menos pressa, mais direção.',
-  signals: [
-    'Observe padrões que se repetem nas suas escolhas recentes.',
-    'Priorize o que fortalece sua energia em vez do que apenas ocupa tempo.',
-    'Converse com clareza antes de assumir novos compromissos.',
+  title: 'Leitura Geral Semanal',
+  one_liner: 'Uma semana de alinhamento entre clareza emocional e ação prática.',
+  overview: [
+    'O momento favorece estabilidade emocional e ação consistente.',
+    'Com foco no essencial, as decisões ganham direção e menos ruído.',
   ],
-  synthesis: 'Quando você une intuição com rotina prática, a semana flui com menos ruído e mais resultado.',
-  practical_guidance: [
-    'Defina 1 prioridade principal para a semana.',
-    'Reserve um bloco diário curto para revisão emocional e foco.',
-    'Feche ciclos pendentes antes de abrir novos.',
-  ],
+  signals: {
+    tarot: 'Observe padrões que se repetem nas suas escolhas recentes.',
+    runes: 'Priorize o que fortalece sua energia em vez do que apenas ocupa tempo.',
+    i_ching: 'Ajustes graduais e consistentes destravam movimentos importantes.',
+    numerology: 'Energia favorável para disciplina com flexibilidade.',
+  },
+  synthesis: {
+    convergences: ['Clareza antes de agir.', 'Constância supera pressa.'],
+    tensions: ['Evitar excesso de tarefas simultâneas.'],
+    theme_of_week: 'Foco com equilíbrio',
+    hidden_lesson: 'Pequenos ajustes diários acumulam resultados duradouros.',
+  },
+  practical_guidance: {
+    do: ['Defina 1 prioridade principal para a semana.'],
+    avoid: ['Evite abrir novos ciclos antes de concluir pendências críticas.'],
+    ritual: 'Reserve um bloco diário curto para revisão emocional e foco.',
+    reflection_question: 'Qual ação simples hoje protege o que é essencial para mim?',
+  },
   closing: 'Confie no seu ritmo: consistência silenciosa é a sua força agora.',
   tags: ['oraculo-central', 'semana', 'clareza', 'equilibrio'],
   energy_score: 74,
 });
 
-const sanitizeReading = (value = {}) => {
-  const fallback = fallbackReading();
-  return {
-    title: value.title || fallback.title,
-    one_liner: value.one_liner || fallback.one_liner,
-    overview: value.overview || fallback.overview,
-    signals: Array.isArray(value.signals) ? value.signals.slice(0, 6) : fallback.signals,
-    synthesis: value.synthesis || fallback.synthesis,
-    practical_guidance: Array.isArray(value.practical_guidance) ? value.practical_guidance.slice(0, 6) : fallback.practical_guidance,
-    closing: value.closing || fallback.closing,
-    tags: Array.isArray(value.tags) ? value.tags.slice(0, 10) : fallback.tags,
-    energy_score: Number.isFinite(Number(value.energy_score)) ? Math.max(0, Math.min(100, Number(value.energy_score))) : fallback.energy_score,
-  };
-};
+const sanitizeReading = (value = {}) => normalizeCentralFinalReading(value, {
+  fallbackSignals: fallbackReading().signals,
+});
 
 export const generateSynthesis = async ({ context }) => {
   if (!genAI) {
@@ -57,10 +57,25 @@ Retorne APENAS um JSON válido no formato:
 {
   "title": "string",
   "one_liner": "string",
-  "overview": "string",
-  "signals": ["string"],
-  "synthesis": "string",
-  "practical_guidance": ["string"],
+  "overview": ["parágrafo 1", "parágrafo 2"],
+  "signals": {
+    "tarot": "string",
+    "runes": "string",
+    "i_ching": "string",
+    "numerology": "string"
+  },
+  "synthesis": {
+    "convergences": ["string"],
+    "tensions": ["string"],
+    "theme_of_week": "string",
+    "hidden_lesson": "string"
+  },
+  "practical_guidance": {
+    "do": ["string"],
+    "avoid": ["string"],
+    "ritual": "string",
+    "reflection_question": "string"
+  },
   "closing": "string",
   "tags": ["string"],
   "energy_score": 0
@@ -80,6 +95,12 @@ Contexto: ${JSON.stringify(context)}`;
 
     return sanitizeReading(JSON.parse(text.slice(start, end + 1)));
   } catch (error) {
+    if (error?.code === 'LLM_LOCATION_UNSUPPORTED') {
+      throw new AppError('Serviço de IA indisponível na localização configurada.', {
+        code: ERROR_CODES.LLM_LOCATION_UNSUPPORTED,
+        status: 503,
+      });
+    }
     throw new AppError('Não foi possível gerar a Leitura Geral agora. Tente novamente em instantes.', {
       code: ERROR_CODES.LLM_PROVIDER_ERROR,
       status: 502,
