@@ -1,12 +1,12 @@
 import { sendSuccess } from '../shared/http/response.js';
 import { AppError } from '../shared/http/AppError.js';
 import { ERROR_CODES } from '../shared/http/errorCodes.js';
+import { parsePagination } from '../shared/http/pagination.js';
 import { getMyUnifiedReadingById, listMyUnifiedReadings } from '../services/unified/unifiedReadingService.js';
 
 export const listUnifiedReadingsMe = async (req, res, next) => {
   try {
-    const limit = Math.min(Number(req.query.limit || 20), 100);
-    const offset = Number(req.query.offset || 0);
+    const { limit, offset } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
     const data = await listMyUnifiedReadings(req.user.id, { limit, offset });
     return sendSuccess(res, { data, requestId: req.requestId });
   } catch (error) {

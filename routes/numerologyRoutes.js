@@ -1,28 +1,25 @@
 // routes/numerologyRoutes.js
 import express from 'express';
-// Importa as funções do controller de numerologia
 import { 
   getOrCalculateNumerology, 
+  getOrCalculateWeeklyNumerology,
   resetNumerologyReading 
-} from '../controllers/numerologyController.js'; 
+} from '../controllers/numerologyController.js';
+import { authRequired } from '../middleware/authRequired.js';
+import { requireSupabaseBearerSession } from '../middleware/requireSupabaseBearerSession.js';
+import { validate } from '../shared/validation/validate.js';
+import {
+  numerologyPersonalBodySchema,
+  numerologyWeeklyBodySchema,
+} from '../shared/validation/numerology.schema.js';
 
-// Opcional: Importar middleware de autenticação, se aplicável
-// import requireAuth from '../middleware/requireAuth.js'; // Exemplo de como importar
-
-// Cria um novo router do Express
 const router = express.Router();
 
-// Opcional: Aplicar middleware de autenticação a TODAS as rotas neste ficheiro
-// Se todas as operações de numerologia exigem login, descomente a linha abaixo
-// router.use(requireAuth); 
+router.use(authRequired);
+router.use(requireSupabaseBearerSession);
 
-// Define a rota POST para a raiz ('/') deste router (corresponderá a /api/numerology)
-// Quando uma requisição POST chegar, ela será tratada pela função getOrCalculateNumerology
-router.post('/', getOrCalculateNumerology);   
+router.post('/', validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
+router.post('/weekly', validate(numerologyWeeklyBodySchema), getOrCalculateWeeklyNumerology);
+router.delete('/reset', resetNumerologyReading);
 
-// Define a rota DELETE para '/reset' (corresponderá a /api/numerology/reset)
-// Quando uma requisição DELETE chegar, ela será tratada pela função resetNumerologyReading
-router.delete('/reset', resetNumerologyReading); 
-
-// Exporta o router configurado para ser usado no index.js principal
 export default router;

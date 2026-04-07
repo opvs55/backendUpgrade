@@ -5,11 +5,22 @@ import {
   getChatResponse, 
   getDidacticMeaning 
 } from '../controllers/tarotController.js';
+import { validate } from '../shared/validation/validate.js';
+import {
+  tarotReadingBodySchema,
+  tarotChatBodySchema,
+  tarotDidacticBodySchema,
+} from '../shared/validation/tarot.schema.js';
+import {
+  tarotReadingRateLimit,
+  tarotChatRateLimit,
+  tarotDidacticRateLimit,
+} from '../middleware/rateLimitByIp.js';
 
 const router = express.Router();
 
-router.post('/', generateTarotReading);          // Rota POST para /api/tarot
-router.post('/chat', getChatResponse);           // Rota POST para /api/tarot/chat
-router.post('/card-meaning', getDidacticMeaning); // Rota POST para /api/tarot/card-meaning
+router.post('/', tarotReadingRateLimit, validate(tarotReadingBodySchema), generateTarotReading);
+router.post('/chat', tarotChatRateLimit, validate(tarotChatBodySchema), getChatResponse);
+router.post('/card-meaning', tarotDidacticRateLimit, validate(tarotDidacticBodySchema), getDidacticMeaning);
 
 export default router;
