@@ -15,3 +15,25 @@ export const getNumerologyWeeklyByUserAndWeekStart = async (userId, weekStart, a
   if (error) throw error;
   return data;
 };
+
+const UPSERT_COLUMNS = ['user_id', 'week_start', 'week_ref', 'result_payload', 'input_payload', 'updated_at'];
+
+const sanitizeWeeklyPayload = (payload = {}) =>
+  UPSERT_COLUMNS.reduce((acc, column) => {
+    if (Object.hasOwn(payload, column) && payload[column] !== undefined) {
+      acc[column] = payload[column];
+    }
+    return acc;
+  }, {});
+
+export const upsertNumerologyWeeklyReading = async (payload, accessToken) => {
+  const sanitized = sanitizeWeeklyPayload(payload);
+  const { data, error } = await getClient(accessToken)
+    .from('numerology_weekly_readings')
+    .upsert(sanitized, { onConflict: 'user_id,week_start' })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data;
+};

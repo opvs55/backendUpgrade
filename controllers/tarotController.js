@@ -3,12 +3,18 @@ import { genAI, geminiModelName } from '../config/gemini.js'; // Importa o clien
 
 // --- Lógica para Gerar Leitura Principal ---
 export const generateTarotReading = async (req, res) => {
-  try {
-    const { question, cards, spreadType } = req.body;
+  try {
+    if (!genAI) {
+      return res.status(503).json({
+        error: 'Serviço de IA temporariamente indisponível. Configure a API key do provedor.',
+      });
+    }
 
-    if (!question || !cards || !Array.isArray(cards) || cards.length === 0) {
-      return res.status(400).json({ error: 'Dados inválidos. Pergunta e cartas são necessárias.' });
-    }
+    const { question, cards, spreadType } = req.body;
+
+    if (!question || !cards || !Array.isArray(cards) || cards.length === 0) {
+      return res.status(400).json({ error: 'Dados inválidos. Pergunta e cartas são necessárias.' });
+    }
     
     let prompt;
     if (spreadType === 'threeCards') {
@@ -230,11 +236,17 @@ export const generateTarotReading = async (req, res) => {
 
 // --- Lógica para o Chat ---
 export const getChatResponse = async (req, res) => {
-  try {
-    const { userMessage, chatContext } = req.body;
-    if (!userMessage || !chatContext) {
-      return res.status(400).json({ error: 'Mensagem e contexto são necessários.' });
-    }
+  try {
+    if (!genAI) {
+      return res.status(503).json({
+        error: 'Serviço de IA temporariamente indisponível. Configure a API key do provedor.',
+      });
+    }
+
+    const { userMessage, chatContext } = req.body;
+    if (!userMessage || !chatContext) {
+      return res.status(400).json({ error: 'Mensagem e contexto são necessários.' });
+    }
 
     const prompt = `
       Você é uma cartomante sábia. O CONTEXTO DA LEITURA É: "${chatContext}".
@@ -258,11 +270,17 @@ export const getChatResponse = async (req, res) => {
 
 // --- Lógica para Significado Didático ---
 export const getDidacticMeaning = async (req, res) => {
-  try {
-    const { cardName, cardOrientation, positionName } = req.body;
-    if (!cardName || !cardOrientation || !positionName) {
-      return res.status(400).json({ error: 'Dados da carta são necessários.' });
-    }
+  try {
+    if (!genAI) {
+      return res.status(503).json({
+        error: 'Serviço de IA temporariamente indisponível. Configure a API key do provedor.',
+      });
+    }
+
+    const { cardName, cardOrientation, positionName } = req.body;
+    if (!cardName || !cardOrientation || !positionName) {
+      return res.status(400).json({ error: 'Dados da carta são necessários.' });
+    }
 
     const prompt = `
       Aja como um professor de Tarot. Explique de forma didática o que a carta "${cardName}" (${cardOrientation}) significa arquetipicamente na posição "${positionName}" de uma Cruz Celta.

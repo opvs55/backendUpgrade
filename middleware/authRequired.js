@@ -1,22 +1,15 @@
 import { AppError } from '../shared/http/AppError.js';
 import { ERROR_CODES } from '../shared/http/errorCodes.js';
+import { supabaseAnonClient } from '../config/supabaseClient.js';
 
-const decodeJwtSub = (token) => {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return decoded.sub || decoded.user_id || null;
-  } catch {
-    return null;
-  }
-};
+const allowDevUserHeader = () =>
+  process.env.NODE_ENV === 'development' || process.env.ALLOW_DEV_USER_HEADER === 'true';
 
-export const authRequired = (req, _res, next) => {
+export const authRequired = async (req, _res, next) => {
   const devUserId = req.headers['x-dev-user-id'];
   const authHeader = req.headers.authorization;
 
-  if (devUserId) {
+  if (devUserId && allowDevUserHeader()) {
     req.user = { id: String(devUserId), authMode: 'dev' };
     req.accessToken = null;
     return next();
@@ -24,11 +17,16 @@ export const authRequired = (req, _res, next) => {
 
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);
-    const userId = decodeJwtSub(token);
-    if (userId) {
-      req.user = { id: String(userId), token, authMode: 'bearer' };
-      req.accessToken = token;
-      return next();
+    try {
+      const { data, error } = await supabaseAnonClient.auth.getUser(token);
+      const userId = data?.user?.id;
+      if (!error && userId) {
+        req.user = { id: String(userId), token, authMode: 'bearer' };
+        req.accessToken = token;
+        return next();
+      }
+    } catch {
+      // Continua para o erro padrão de autenticação abaixo.
     }
   }
 

@@ -106,3 +106,30 @@ export const birthdayNumberMeanings = {
   30: "Criatividade (3) e expressão artística amplificadas (30).", // 3+0=3
   31: "Praticidade (4) com forte determinação (31).", // 3+1=4
 }; // Nota: 33 não é usualmente considerado como Número de Aniversário isolado.
+
+/** Reduz o ano (ex.: 2026) a dígito mestre, preservando 11/22/33 quando aplicável. */
+export const reduceYearToUniversal = (year) => {
+  let current = Number(year) || 0;
+  while (current > 9 && ![11, 22, 33].includes(current)) {
+    current = String(current)
+      .split('')
+      .map((digit) => Number(digit))
+      .reduce((acc, digit) => acc + digit, 0);
+  }
+  return current;
+};
+
+/** Vibração do mês corrente (ano universal + mês), alinhado ao uso no oráculo central. */
+export const buildUniversalMonthEnergy = (date = new Date()) => {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() + 1;
+  const yearUniversal = reduceYearToUniversal(year);
+  const monthEnergy = reduceNumber(month + yearUniversal);
+
+  return {
+    year_universal: yearUniversal,
+    month,
+    month_energy: monthEnergy,
+    interpretation_notes: `Ano universal ${yearUniversal} somado ao mês ${month} indica vibração ${monthEnergy}, com convite à ação equilibrada e revisão prática de prioridades.`,
+  };
+};

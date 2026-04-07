@@ -353,11 +353,19 @@ export const generateCentralReading = async (userId, input = {}, accessToken) =>
 
   const loaded = await loadWeeklyContext(userId, accessToken);
 
+  const numerologyWeeklyForSnapshot = loaded.numerologyWeekly?.result_payload
+    ? {
+        ...loaded.numerologyWeekly.result_payload,
+        week_start: loaded.numerologyWeekly.week_start,
+        week_ref: loaded.numerologyWeekly.week_ref,
+      }
+    : loaded.numerologyWeekly;
+
   const modulesSnapshot = {
     profile: buildBasicProfile(loaded.profile),
     tarot_weekly: loaded.weeklyCard,
     numerology_time: loaded.numerologyTime,
-    numerology_weekly: loaded.numerologyWeekly,
+    numerology_weekly: numerologyWeeklyForSnapshot,
     runes_weekly: loaded.runesWeekly,
     iching_weekly: loaded.ichingWeekly,
   };

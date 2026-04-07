@@ -16,6 +16,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Rate limit e logs usam req.ip; atrás de proxy (Render, Fly, etc.) defina TRUST_PROXY=1
+if (process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
 // === 1. CORS (Primeiro de tudo) ===
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
