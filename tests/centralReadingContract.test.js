@@ -63,7 +63,7 @@ test('validateCentralGenerateResponse rejects invalid output payload', () => {
           title: '',
         },
       }),
-    /Invalid input/
+    (error) => Array.isArray(error?.issues) && error.issues.length > 0
   );
 });
 

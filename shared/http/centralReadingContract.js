@@ -39,10 +39,7 @@ const clampEnergyScore = (value, fallback = 62) => {
   return Math.max(0, Math.min(100, Math.round(parsed)));
 };
 
-const nonEmptyStringSchema = z
-  .string()
-  .transform((value) => value.trim())
-  .pipe(z.string().min(1));
+const nonEmptyStringSchema = z.string().trim().min(1);
 
 const nonEmptyStringArraySchema = z.array(nonEmptyStringSchema).min(1);
 
