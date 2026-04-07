@@ -6,6 +6,9 @@ const UNIFIED_READING_COLUMNS = [
   'user_id',
   'week_start',
   'week_ref',
+  'status',
+  'cached',
+  'ai_failed',
   'focus_area',
   'question',
   'inputs_snapshot',
@@ -53,7 +56,7 @@ export const upsertUnifiedReading = async (payload, accessToken) => {
   const sanitizedPayload = sanitizeUnifiedReadingPayload(payload);
   const { data, error } = await getClient(accessToken)
     .from('unified_readings')
-    .upsert(sanitizedPayload, { onConflict: 'user_id,week_start' })
+    .upsert(sanitizedPayload, { onConflict: 'user_id,week_ref' })
     .select('*')
     .single();
 
@@ -67,6 +70,20 @@ export const getUnifiedReadingByUserAndWeekStart = async (userId, weekStart, acc
     .select('*')
     .eq('user_id', userId)
     .eq('week_start', weekStart)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getUnifiedReadingByUserAndWeekRef = async (userId, weekRef, accessToken) => {
+  const { data, error } = await getClient(accessToken)
+    .from('unified_readings')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('week_ref', weekRef)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
