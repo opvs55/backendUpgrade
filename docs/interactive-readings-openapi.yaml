@@ -1,0 +1,821 @@
+openapi: 3.0.3
+info:
+  title: Interactive Readings API
+  version: 1.0.0
+  description: |
+    OpenAPI contract for Interactive Readings + external sharing.
+    Private routes require Supabase bearer token. Public slug route is unauthenticated.
+servers:
+  - url: /
+tags:
+  - name: Queue
+  - name: Match
+  - name: Sessions
+  - name: History
+  - name: Shares
+  - name: Public
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/readings/queue/join:
+    post:
+      tags: [Queue]
+      summary: Join interactive readings queue
+      operationId: joinReadingsQueue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueueJoinRequest'
+      responses:
+        '200':
+          description: User joined queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueJoinResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/readings/queue/leave:
+    post:
+      tags: [Queue]
+      summary: Leave interactive readings queue
+      operationId: leaveReadingsQueue
+      responses:
+        '200':
+          description: User left queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueLeaveResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/readings/queue/status:
+    get:
+      tags: [Queue]
+      summary: Get queue status for week
+      operationId: getReadingsQueueStatus
+      parameters:
+        - $ref: '#/components/parameters/WeekRefQuery'
+      responses:
+        '200':
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/readings/match/accept:
+    post:
+      tags: [Match]
+      summary: Accept pending match
+      operationId: acceptReadingsMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchAcceptRequest'
+      responses:
+        '200':
+          description: Match accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchAcceptResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/readings/sessions/{id}:
+    get:
+      tags: [Sessions]
+      summary: Get private session details (participants only)
+      operationId: getReadingSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/v1/readings/sessions/{id}/messages:
+    post:
+      tags: [Sessions]
+      summary: Append message event to session
+      operationId: addSessionMessage
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionMessageRequest'
+      responses:
+        '200':
+          description: Message accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionEventAckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/readings/sessions/{id}/draw:
+    post:
+      tags: [Sessions]
+      summary: Backend-authoritative draw
+      description: |
+        Card draw is authoritative on backend. Client must not send chosen cards.
+      operationId: drawSessionCards
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionDrawRequest'
+      responses:
+        '200':
+          description: Draw result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDrawResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/readings/sessions/{id}/close/request:
+    post:
+      tags: [Sessions]
+      summary: Request consensual session close
+      operationId: requestSessionClose
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          description: Close request registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCloseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/v1/readings/sessions/{id}/close/confirm:
+    post:
+      tags: [Sessions]
+      summary: Confirm close request (2-party consensus)
+      operationId: confirmSessionClose
+      parameters:
+        - $ref: '#/components/parameters/SessionIdPath'
+      responses:
+        '200':
+          description: Close confirmation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCloseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /api/v1/readings/history:
+    get:
+      tags: [History]
+      summary: List reading session history
+      operationId: listReadingHistory
+      parameters:
+        - $ref: '#/components/parameters/LimitQuery'
+        - $ref: '#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: History list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/readings/shares/{shareId}:
+    get:
+      tags: [Shares]
+      summary: Get private share details
+      operationId: getReadingShare
+      parameters:
+        - $ref: '#/components/parameters/ShareIdPath'
+      responses:
+        '200':
+          description: Share details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    post:
+      tags: [Shares]
+      summary: Update share settings
+      operationId: updateReadingShare
+      parameters:
+        - $ref: '#/components/parameters/ShareIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareUpdateRequest'
+      responses:
+        '200':
+          description: Share updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/public/readings/{slug}:
+    get:
+      tags: [Public]
+      summary: Get sanitized public share by slug
+      operationId: getPublicReadingShareBySlug
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SlugPath'
+      responses:
+        '200':
+          description: Public share payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicShareResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '410':
+          description: Share expired or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    WeekRefQuery:
+      in: query
+      name: week_ref
+      required: true
+      schema:
+        $ref: '#/components/schemas/WeekRef'
+    SessionIdPath:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ShareIdPath:
+      in: path
+      name: shareId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SlugPath:
+      in: path
+      name: slug
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-z0-9-]{8,80}$'
+    LimitQuery:
+      in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    OffsetQuery:
+      in: query
+      name: offset
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: Sessão inválida ou ausente.
+            details: {}
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: Payload inválido.
+            details: {}
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: NOT_FOUND
+            message: Recurso não encontrado.
+            details: {}
+    ConflictError:
+      description: State conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: CONFLICT
+            message: Estado atual não permite esta operação.
+            details: {}
+    ServiceUnavailable:
+      description: Upstream or service unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: SERVICE_UNAVAILABLE
+            message: Serviço temporariamente indisponível.
+            details: {}
+
+  schemas:
+    WeekRef:
+      type: string
+      pattern: '^\d{4}-W\d{2}$'
+      example: 2026-W15
+
+    QueueState:
+      type: string
+      enum: [waiting, matched, left, expired]
+
+    SessionStatus:
+      type: string
+      enum: [matching, in_progress, awaiting_close, closed, cancelled, expired]
+
+    ShareVisibility:
+      type: string
+      enum: [private, unlisted, public]
+
+    ShareContentLevel:
+      type: string
+      enum: [summary, standard, full]
+
+    QueueJoinRequest:
+      type: object
+      additionalProperties: false
+      required: [week_ref]
+      properties:
+        week_ref:
+          $ref: '#/components/schemas/WeekRef'
+        preferences:
+          type: object
+          additionalProperties: true
+
+    QueueJoinResponse:
+      type: object
+      additionalProperties: false
+      required: [status, queue_state, week_ref]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        queue_state:
+          $ref: '#/components/schemas/QueueState'
+        week_ref:
+          $ref: '#/components/schemas/WeekRef'
+
+    QueueLeaveResponse:
+      type: object
+      additionalProperties: false
+      required: [status, queue_state]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        queue_state:
+          $ref: '#/components/schemas/QueueState'
+
+    QueueStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [status, queue_state, matched_session_id]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        queue_state:
+          $ref: '#/components/schemas/QueueState'
+        matched_session_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    MatchAcceptRequest:
+      type: object
+      additionalProperties: false
+      required: [session_id]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+
+    MatchAcceptResponse:
+      type: object
+      additionalProperties: false
+      required: [status, session_id, session_status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        session_id:
+          type: string
+          format: uuid
+        session_status:
+          $ref: '#/components/schemas/SessionStatus'
+
+    SessionParticipant:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    SessionEvent:
+      type: object
+      additionalProperties: false
+      required: [id, event_type, created_at]
+      properties:
+        id:
+          type: integer
+        event_type:
+          type: string
+          enum:
+            - joined_queue
+            - left_queue
+            - matched
+            - message
+            - draw
+            - state_changed
+            - close_requested
+            - close_confirmed
+            - closed
+            - share_created
+            - share_updated
+        actor_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+
+    DrawItem:
+      type: object
+      additionalProperties: false
+      required: [draw_index, card_code, card_name, is_reversed]
+      properties:
+        draw_index:
+          type: integer
+          minimum: 1
+        card_code:
+          type: string
+          minLength: 1
+        card_name:
+          type: string
+          minLength: 1
+        is_reversed:
+          type: boolean
+
+    SessionDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [status, session]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        session:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - week_ref
+            - session_status
+            - participants
+            - draws
+          properties:
+            id:
+              type: string
+              format: uuid
+            week_ref:
+              $ref: '#/components/schemas/WeekRef'
+            session_status:
+              $ref: '#/components/schemas/SessionStatus'
+            participants:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/SessionParticipant'
+            draws:
+              type: array
+              items:
+                $ref: '#/components/schemas/DrawItem'
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/SessionEvent'
+            updated_at:
+              type: string
+              format: date-time
+
+    SessionMessageRequest:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+
+    SessionEventAckResponse:
+      type: object
+      additionalProperties: false
+      required: [status, session_id, event]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        session_id:
+          type: string
+          format: uuid
+        event:
+          $ref: '#/components/schemas/SessionEvent'
+
+    SessionDrawRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        count:
+          type: integer
+          minimum: 1
+          maximum: 3
+          default: 1
+
+    SessionDrawResponse:
+      type: object
+      additionalProperties: false
+      required: [status, session_id, draws]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        session_id:
+          type: string
+          format: uuid
+        draws:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/DrawItem'
+
+    SessionCloseResponse:
+      type: object
+      additionalProperties: false
+      required: [status, session_id, session_status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        session_id:
+          type: string
+          format: uuid
+        session_status:
+          $ref: '#/components/schemas/SessionStatus'
+
+    HistoryItem:
+      type: object
+      additionalProperties: false
+      required: [session_id, week_ref, session_status, updated_at]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        week_ref:
+          $ref: '#/components/schemas/WeekRef'
+        session_status:
+          $ref: '#/components/schemas/SessionStatus'
+        updated_at:
+          type: string
+          format: date-time
+
+    HistoryListResponse:
+      type: object
+      additionalProperties: false
+      required: [status, items]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+
+    ShareUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        is_active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        visibility:
+          $ref: '#/components/schemas/ShareVisibility'
+        content_level:
+          $ref: '#/components/schemas/ShareContentLevel'
+
+    ShareDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - share_id
+        - session_id
+        - slug
+        - is_active
+        - visibility
+        - content_level
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        share_id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]{8,80}$'
+        is_active:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        visibility:
+          $ref: '#/components/schemas/ShareVisibility'
+        content_level:
+          $ref: '#/components/schemas/ShareContentLevel'
+        payload:
+          type: object
+          additionalProperties: true
+
+    PublicShareResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - slug
+        - visibility
+        - content_level
+        - session_status
+        - payload
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]{8,80}$'
+        visibility:
+          $ref: '#/components/schemas/ShareVisibility'
+        content_level:
+          $ref: '#/components/schemas/ShareContentLevel'
+        session_status:
+          $ref: '#/components/schemas/SessionStatus'
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+          enum:
+            - UNAUTHORIZED
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - CONFLICT
+            - SERVICE_UNAVAILABLE
+        message:
+          type: string
+          minLength: 1
+        details:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items:
+                type: object
+                additionalProperties: true
