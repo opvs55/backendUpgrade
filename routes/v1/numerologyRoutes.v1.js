@@ -19,7 +19,9 @@ router.use(authRequired);
 router.use(requireSupabaseBearerSession);
 
 router.post('/readings', validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
+router.post('/personal', validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
 router.post('/weekly', validate(numerologyWeeklyBodySchema), getOrCalculateWeeklyNumerology);
 router.delete('/readings/current', resetNumerologyReading);
+router.delete('/personal/current', resetNumerologyReading);
 
 export default router;
