@@ -8,4 +8,5 @@ export const env = {
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3-flash-preview',
   supabaseUrl: process.env.SUPABASE_URL || '',
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+  serverUrl: process.env.SERVER_URL || '',
 };

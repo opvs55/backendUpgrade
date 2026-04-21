@@ -10,6 +10,8 @@ import v1Routes from './routes/v1/index.js';
 import healthRoutes from './routes/healthRoutes.js';
 import { requestId } from './shared/http/requestId.js';
 import { errorHandler } from './shared/http/errorHandler.js';
+import { startKeepAlive } from './utils/keepAlive.js';
+import { env } from './config/env.js';
 
 dotenv.config();
 
@@ -48,4 +50,5 @@ app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✨ Servidor rodando na porta ${PORT}`);
+  startKeepAlive(env.serverUrl);
 });
