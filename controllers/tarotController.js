@@ -158,52 +158,58 @@ export const generateTarotReading = async (req, res) => {
       }
       `;
     } else if (spreadType === 'celticCross') {
-      prompt = `
-      Aja como uma taróloga experiente com uma profunda abordagem psicológica e terapêutica.
-      A pergunta do consulente é: "${question}".
-      A tiragem da Cruz Celta revelou as seguintes 10 cartas:
+     prompt = `
+       Aja como uma taróloga experiente com uma profunda abordagem psicológica e terapêutica.
+       A pergunta do consulente é: "${question}".
+       A tiragem da Cruz Celta revelou as seguintes 10 cartas:
 
-      **AS CARTAS SORTEADAS SÃO:**
-      - Posição 1 (O Coração da Matéria): ${cards[0].nome} ${cards[0].invertida ? '(Invertida)' : ''}
-      - Posição 2 (O Desafio Imediato): ${cards[1].nome} ${cards[1].invertida ? '(Invertida)' : ''}
-      - Posição 3 (A Base da Questão / Passado Recente): ${cards[2].nome} ${cards[2].invertida ? '(Invertida)' : ''}
-      - Posição 4 (O Passado Distante / Fundações): ${cards[3].nome} ${cards[3].invertida ? '(Invertida)' : ''}
-      - Posição 5 (O Objetivo / Futuro Próximo): ${cards[4].nome} ${cards[4].invertida ? '(Invertida)' : ''}
-      - Posição 6 (O Caminho / Futuro Distante): ${cards[5].nome} ${cards[5].invertida ? '(Invertida)' : ''}
-      - Posição 7 (O Consulente / Como se vê): ${cards[6].nome} ${cards[6].invertida ? '(Invertida)' : ''}
-      - Posição 8 (O Ambiente / Influências Externas): ${cards[7].nome} ${cards[7].invertida ? '(Invertida)' : ''}
-      - Posição 9 (Esperanças e Medos): ${cards[8].nome} ${cards[8].invertida ? '(Invertida)' : ''}
-      - Posição 10 (O Resultado Final / Síntese): ${cards[9].nome} ${cards[9].invertida ? '(Invertida)' : ''}
+       **AS CARTAS SORTEADAS SÃO:**
+      - Posição 1 (O Coração da Matéria): ${cards[0].nome} ${cards[0].invertida ? '(Invertida)' : ''}
+      - Posição 2 (O Desafio Imediato): ${cards[1].nome} ${cards[1].invertida ? '(Invertida)' : ''}
+      - Posição 3 (A Base da Questão): ${cards[2].nome} ${cards[2].invertida ? '(Invertida)' : ''}
+      - Posição 4 (O Passado Distante): ${cards[3].nome} ${cards[3].invertida ? '(Invertida)' : ''}
+      - Posição 5 (O Objetivo): ${cards[4].nome} ${cards[4].invertida ? '(Invertida)' : ''}
+      - Posição 6 (O Caminho): ${cards[5].nome} ${cards[5].invertida ? '(Invertida)' : ''}
+      - Posição 7 (O Consulente): ${cards[6].nome} ${cards[6].invertida ? '(Invertida)' : ''}
+      - Posição 8 (O Ambiente): ${cards[7].nome} ${cards[7].invertida ? '(Invertida)' : ''}
+      - Posição 9 (Esperanças e Medos): ${cards[8].nome} ${cards[8].invertida ? '(Invertida)' : ''}
+      - Posição 10 (O Resultado Final): ${cards[9].nome} ${cards[9].invertida ? '(Invertida)' : ''}
 
-      **TAREFA FINAL:**
-      Crie uma análise profunda e coesa, conectando as cartas às suas posições e à pergunta. Retorne sua resposta EXCLUSIVAMENTE em formato JSON, sem nenhum texto ou formatação extra, seguindo esta estrutura:
-      {
-        "titulo_leitura": "Crie um título poético e impactante para esta leitura.",
-        "resumo_geral": "Escreva um parágrafo curto que resuma a mensagem central da jornada de 10 cartas.",
-        "analise_cartas": [
-          { "posicao": "Posição 1: O Coração da Matéria", "texto": "Analise a carta 1 (${cards[0].nome}) neste contexto, conectando com a pergunta." },
-          { "posicao": "Posição 2: O Desafio Imediato", "texto": "Analise a carta 2 (${cards[1].nome}) neste contexto." },
-          { "posicao": "Posição 3: A Base da Questão", "texto": "Analise a carta 3 (${cards[2].nome}) neste contexto." },
-          { "posicao": "Posição 4: O Passado Distante", "texto": "Analise a carta 4 (${cards[3].nome}) neste contexto." },
-          { "posicao": "Posição 5: O Objetivo", "texto": "Analise a carta 5 (${cards[4].nome}) neste contexto." },
-          { "posicao": "Posição 6: O Caminho", "texto": "Analise a carta 6 (${cards[5].nome}) neste contexto." },
-          { "posicao": "Posição 7: O Consulente", "texto": "Analise a carta 7 (${cards[6].nome}) neste contexto." },
-          { "posicao": "Posição 8: O Ambiente", "texto": "Analise a carta 8 (${cards[7].nome}) neste contexto." },
-          { "posicao": "Posição 9: Esperanças e Medos", "texto": "Analise a carta 9 (${cards[8].nome}) neste contexto." }
-        ],
-        "conselho_final": "Analise a carta 10 (${cards[9].nome}) como a síntese e o conselho final para o consulente."
-      }
-      `;
-    } else { 
-      console.error(`[Tarot Controller] ERRO: spreadType '${spreadType}' não é reconhecido.`);
-      return res.status(400).json({ error: `O tipo de tiragem '${spreadType}' não é reconhecido.` });
-    }
+      **TAREFA FINAL:**
+      Crie uma análise coesa. Cada "texto" deve ter no máximo 3 frases objetivas. Retorne EXCLUSIVAMENTE em formato JSON, sem texto ou formatação extra:
+      {
+       "titulo_leitura": "Título poético e impactante para esta leitura.",
+       "resumo_geral": "1 parágrafo curto resumindo a mensagem central das 10 cartas.",
+       "analise_cartas": [
+         { "posicao": "Posição 1: O Coração da Matéria", "texto": "Análise de ${cards[0].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 2: O Desafio Imediato", "texto": "Análise de ${cards[1].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 3: A Base da Questão", "texto": "Análise de ${cards[2].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 4: O Passado Distante", "texto": "Análise de ${cards[3].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 5: O Objetivo", "texto": "Análise de ${cards[4].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 6: O Caminho", "texto": "Análise de ${cards[5].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 7: O Consulente", "texto": "Análise de ${cards[6].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 8: O Ambiente", "texto": "Análise de ${cards[7].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 9: Esperanças e Medos", "texto": "Análise de ${cards[8].nome} neste contexto (máx. 3 frases)." }
+       ],
+       "conselho_final": "Análise de ${cards[9].nome} como síntese e conselho final (máx. 4 frases)."
+     }
+      `;
+    } else { 
+      console.error(`[Tarot Controller] ERRO: spreadType '${spreadType}' não é reconhecido.`);
+      return res.status(400).json({ error: `O tipo de tiragem '${spreadType}' não é reconhecido.` });
+    }
 
-    // Chama a IA
-    const model = genAI.getGenerativeModel({ model: geminiModelName }); // Usa o nome do modelo importado
-    const result = await model.generateContent(prompt);
+    // Configuração de geração adaptada ao spread
+    const generationConfig = spreadType === 'celticCross'
+      ? { maxOutputTokens: 4096, temperature: 0.7 }
+      : { maxOutputTokens: 2048, temperature: 0.9 };
+
+    // Chama a IA
+    const model = genAI.getGenerativeModel({ model: geminiModelName, generationConfig });
+    const result = await model.generateContent(prompt);
     const rawText = result.response.text();
     
+
     // Processa a resposta (lógica JSON)
     if (['threeCards', 'templeOfAphrodite', 'pathChoice', 'celticCross'].includes(spreadType)) {
       try {
