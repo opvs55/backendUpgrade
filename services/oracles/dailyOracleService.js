@@ -1,5 +1,6 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { logger } from '../../shared/logging/logger.js';
+import { extractJsonFromText } from '../../utils/llmResponse.js';
 
 const TAROT_DECK = [
   { id: 'fool', name: 'O Louco' }, { id: 'magician', name: 'O Mago' },
@@ -44,14 +45,28 @@ export const fetchOrCreateDailyOracle = async ({ userId, supabase, oracleDate })
 
   const card = pickCardForDate(dateStr);
 
+  // 'interpretation' guarda um JSON serializado (nome_do_dia, mensagem,
+  // intencao_pratica) em vez de texto solto — sem precisar de coluna nova
+  // na tabela. O frontend tenta fazer parse; se falhar (linha antiga ou
+  // IA fora do ar), cai de volta pro texto simples.
   let interpretation = null;
   if (genAI) {
     try {
       const prompt = `Você é um tarólogo brasileiro. Para o dia ${dateStr}, a carta do dia é "${card.name}".
-Escreva uma mensagem oracular curta (3-4 frases) em português, direta, sem mencionar o nome da carta explicitamente no início. Foque em energia, ação e intenção para o dia. Sem fatalismo. Responda só o texto.`;
+
+Responda em JSON exato, sem markdown, com estes campos:
+{
+  "nome_do_dia": "Um nome poético curto pra este dia (3 a 5 palavras), inspirado na carta, tipo um título — não repita o nome da carta",
+  "mensagem": "Mensagem oracular curta (3-4 frases) em português, direta, sem mencionar o nome da carta explicitamente. Foque em energia, ação e intenção para o dia. Sem fatalismo.",
+  "intencao_pratica": "Uma frase curta e concreta — algo que a pessoa pode literalmente fazer hoje pra usar essa energia."
+}
+Responda APENAS o JSON.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
       const result = await model.generateContent(prompt);
-      interpretation = result.response.text()?.trim() || null;
+      const parsed = extractJsonFromText(result.response.text());
+      if (parsed?.mensagem) {
+        interpretation = JSON.stringify(parsed);
+      }
     } catch (err) {
       logger.warn('daily_oracle.ai_failed', { userId, error: err?.message });
     }
