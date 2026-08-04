@@ -189,9 +189,10 @@ export const generateTarotReading = async (req, res) => {
          { "posicao": "Posição 6: O Caminho", "texto": "Análise de ${cards[5].nome} neste contexto (máx. 3 frases)." },
          { "posicao": "Posição 7: O Consulente", "texto": "Análise de ${cards[6].nome} neste contexto (máx. 3 frases)." },
          { "posicao": "Posição 8: O Ambiente", "texto": "Análise de ${cards[7].nome} neste contexto (máx. 3 frases)." },
-         { "posicao": "Posição 9: Esperanças e Medos", "texto": "Análise de ${cards[8].nome} neste contexto (máx. 3 frases)." }
+         { "posicao": "Posição 9: Esperanças e Medos", "texto": "Análise de ${cards[8].nome} neste contexto (máx. 3 frases)." },
+         { "posicao": "Posição 10: O Resultado Final", "texto": "Análise de ${cards[9].nome} neste contexto (máx. 3 frases)." }
        ],
-       "conselho_final": "Análise de ${cards[9].nome} como síntese e conselho final (máx. 4 frases)."
+       "conselho_final": "Um parágrafo de conselho prático e inspirador que sintetize a jornada revelada pelas 10 cartas como um todo, ajudando o consulente a aplicar essa sabedoria em sua vida (máx. 4 frases)."
      }
       `;
     } else { 
