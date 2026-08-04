@@ -1,7 +1,9 @@
 // Permite apenas deploys (produção e previews) do próprio projeto na Vercel,
 // em vez de qualquer *.vercel.app — evita que um app de terceiros hospedado
 // na Vercel passe pelo CORS com credentials: true.
-const OWN_VERCEL_PROJECT_ORIGIN = /^https:\/\/oraculo-front-2-0[a-z0-9-]*\.vercel\.app$/i;
+// Cobre tanto o nome antigo do projeto (oraculo-front-2-0) quanto o atual
+// (oraculo-upgrade) para não quebrar caso o domínio mude de novo no futuro.
+const OWN_VERCEL_PROJECT_ORIGIN = /^https:\/\/oraculo-(front-2-0|upgrade)[a-z0-9-]*\.vercel\.app$/i;
 
 const extraAllowedOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
   .split(',')
@@ -16,7 +18,8 @@ export const corsOptions = {
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
-      'https://oraculo-front-2-0.vercel.app', // O seu link exato
+      'https://oraculo-front-2-0.vercel.app',
+      'https://oraculo-upgrade.vercel.app', // domínio atual de produção na Vercel
       ...extraAllowedOrigins,
     ];
 
