@@ -1,6 +1,7 @@
 import { reduceNumber, lifePathMeanings } from '../../utils/numerologyHelpers.js';
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { logger } from '../../shared/logging/logger.js';
+import { extractJsonFromText } from '../../utils/llmResponse.js';
 
 const calcLifePath = (dateStr) => {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -50,9 +51,7 @@ Escreva uma análise em JSON com EXATAMENTE esta estrutura:
 Responda APENAS o JSON.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
       const result = await model.generateContent(prompt);
-      let text = result.response.text()?.trim();
-      if (text?.startsWith('```')) text = text.replace(/```json?|```/g, '').trim();
-      aiAnalysis = JSON.parse(text);
+      aiAnalysis = extractJsonFromText(result.response.text());
     } catch (err) {
       logger.warn('compatibility.ai_failed', { userId, error: err?.message });
       aiAnalysis = { score, headline: 'Análise indisponível no momento.', harmony: null, tension: null, advice: null, aspects: [] };

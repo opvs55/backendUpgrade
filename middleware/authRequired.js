@@ -2,8 +2,9 @@ import { AppError } from '../shared/http/AppError.js';
 import { ERROR_CODES } from '../shared/http/errorCodes.js';
 import { supabaseAnonClient } from '../config/supabaseClient.js';
 
-const allowDevUserHeader = () =>
-  process.env.NODE_ENV === 'development' || process.env.ALLOW_DEV_USER_HEADER === 'true';
+// Exige uma env var explícita (nunca NODE_ENV) para evitar que um deploy de produção
+// mal configurado (ex.: NODE_ENV esquecido como "development") habilite o bypass de auth.
+const allowDevUserHeader = () => process.env.ALLOW_DEV_USER_HEADER === 'true';
 
 export const authRequired = async (req, _res, next) => {
   const devUserId = req.headers['x-dev-user-id'];

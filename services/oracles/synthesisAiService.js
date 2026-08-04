@@ -2,6 +2,7 @@ import { genAI, geminiModelName } from '../../config/gemini.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 import { normalizeCentralFinalReading } from '../../shared/http/centralReadingContract.js';
+import { extractJsonFromText } from '../../utils/llmResponse.js';
 
 const fallbackReading = () => ({
   title: 'Leitura Geral Semanal',
@@ -143,14 +144,7 @@ ${JSON.stringify(distilled, null, 2)}`;
     const model = genAI.getGenerativeModel({ model: geminiModelName });
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-
-    if (start === -1 || end === -1) {
-      throw new Error('JSON ausente');
-    }
-
-    return sanitizeReading(JSON.parse(text.slice(start, end + 1)));
+    return sanitizeReading(extractJsonFromText(text));
   } catch (error) {
     if (error?.code === 'LLM_LOCATION_UNSUPPORTED') {
       throw new AppError('Serviço de IA indisponível na localização configurada.', {

@@ -54,7 +54,6 @@ export const fetchOrCreateTransit = async ({ userId, supabase, birthDate, transi
   if (genAI) {
     try {
       const yearTheme = PERSONAL_YEAR_THEMES[personalYear] || '';
-      const lpDesc = (lifePathMeanings[reduceNumber(birthDate.split('-').map((v, i) => i === 0 ? reduceNumber(v) : reduceNumber(Number(v))).reduce((a, b) => a + b, 0))] || '').slice(0, 200);
       const prompt = `Você é numerólogo brasileiro. Para a data ${dateStr}, este usuário está em:
 - Ano Pessoal ${personalYear} (${yearTheme})
 - Mês Pessoal ${personalMonth}

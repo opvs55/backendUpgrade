@@ -1,5 +1,6 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { logger } from '../../shared/logging/logger.js';
+import { extractJsonFromText } from '../../utils/llmResponse.js';
 
 const TAROT_MAJOR_ARCANA = [
   { id: 'fool', name: 'O Louco' }, { id: 'magician', name: 'O Mago' },
@@ -69,9 +70,7 @@ Escreva uma visão geral do ano em JSON exato:
 Responda APENAS o JSON, sem markdown.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
       const result = await model.generateContent(prompt);
-      let text = result.response.text()?.trim();
-      if (text?.startsWith('```')) text = text.replace(/```json?|```/g, '').trim();
-      finalReading = JSON.parse(text);
+      finalReading = extractJsonFromText(result.response.text());
     } catch (err) {
       logger.warn('year_map.ai_failed', { userId, error: err?.message });
     }

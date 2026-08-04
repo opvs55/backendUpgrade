@@ -7,7 +7,7 @@ import { getMyUnifiedReadingById, listMyUnifiedReadings } from '../services/unif
 export const listUnifiedReadingsMe = async (req, res, next) => {
   try {
     const { limit, offset } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
-    const data = await listMyUnifiedReadings(req.user.id, { limit, offset });
+    const data = await listMyUnifiedReadings(req.user.id, { limit, offset }, req.accessToken);
     return sendSuccess(res, { data, requestId: req.requestId });
   } catch (error) {
     return next(error);
@@ -16,7 +16,7 @@ export const listUnifiedReadingsMe = async (req, res, next) => {
 
 export const getUnifiedReadingByIdMe = async (req, res, next) => {
   try {
-    const data = await getMyUnifiedReadingById(req.user.id, req.params.id);
+    const data = await getMyUnifiedReadingById(req.user.id, req.params.id, req.accessToken);
     if (!data) {
       throw new AppError('Leitura não encontrada.', { code: ERROR_CODES.NOT_FOUND, status: 404 });
     }
