@@ -1,6 +1,7 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { logger } from '../../shared/logging/logger.js';
 import { extractJsonFromText } from '../../utils/llmResponse.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 
 const TAROT_DECK = [
   { id: 'fool', name: 'O Louco' }, { id: 'magician', name: 'O Mago' },
@@ -62,7 +63,7 @@ Responda em JSON exato, sem markdown, com estes campos:
 }
 Responda APENAS o JSON.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
-      const result = await model.generateContent(prompt);
+      const result = await generateWithRetry(model, prompt);
       const parsed = extractJsonFromText(result.response.text());
       if (parsed?.mensagem) {
         interpretation = JSON.stringify(parsed);
