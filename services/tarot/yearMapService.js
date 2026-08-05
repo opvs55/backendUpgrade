@@ -6,7 +6,7 @@ const TAROT_MAJOR_ARCANA = [
   { id: 'fool', name: 'O Louco' }, { id: 'magician', name: 'O Mago' },
   { id: 'high_priestess', name: 'A Sacerdotisa' }, { id: 'empress', name: 'A Imperatriz' },
   { id: 'emperor', name: 'O Imperador' }, { id: 'hierophant', name: 'O Hierofante' },
-  { id: 'lovers', name: 'Os Enamorados' }, { id: 'chariot', name: 'O Carro' },
+  { id: 'lovers', name: 'Os Amantes' }, { id: 'chariot', name: 'O Carro' },
   { id: 'strength', name: 'A Força' }, { id: 'hermit', name: 'O Eremita' },
   { id: 'wheel', name: 'A Roda da Fortuna' }, { id: 'justice', name: 'A Justiça' },
   { id: 'hanged_man', name: 'O Enforcado' }, { id: 'death', name: 'A Morte' },

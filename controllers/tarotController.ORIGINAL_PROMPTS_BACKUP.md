@@ -1,10 +1,16 @@
+# Backup: prompts originais do tarotController.js (antes da mudanca de tom)
+
+Guardado em 2026-08-05 porque o usuario disse que essas versoes acertavam muito
+bem as leituras e nao quer arriscar perder o texto caso a nova direcao de tom
+(TONE_DIRECTIVE, adicionada nesta sessao) nao funcione tao bem.
+
+Como restaurar: copiar o conteudo do bloco abaixo de volta para
+`controllers/tarotController.js` (ou usar `git show <commit-anterior-a-essa-sessao>:controllers/tarotController.js`,
+ja que essa versao tambem continua integra no historico do git).
+
+```js
 // controllers/tarotController.js
 import { genAI, geminiModelName } from '../config/gemini.js'; // Importa o cliente configurado
-
-// Direção de tom compartilhada pelas 4 tiragens: sem ela, o Gemini responde
-// genérico demais (hedged, sem abertura de impacto) — isso é o que fazia a
-// leitura parecer "sem chamar atenção" pros usuários.
-const TONE_DIRECTIVE = `DIREÇÃO DE TOM: escreva com voz direta e confiante. Use frases afirmativas — nada de "talvez", "pode ser", "é possível que" ou qualquer linguagem que suavize a mensagem. Comece cada bloco de análise com uma frase de impacto que prenda a atenção, não com uma introdução genérica. Prefira imagens concretas a abstrações vagas.`;
 
 // --- Lógica para Gerar Leitura Principal ---
 export const generateTarotReading = async (req, res) => {
@@ -25,8 +31,6 @@ export const generateTarotReading = async (req, res) => {
     if (spreadType === 'threeCards') {
       prompt = `
       Você é uma taróloga sábia e intuitiva. Sua tarefa é analisar uma pergunta e escolher o melhor método de leitura de 3 cartas para respondê-la, e depois realizar a interpretação.
-
-      ${TONE_DIRECTIVE}
 
       1.  **ANÁLISE DA PERGUNTA:**
           A pergunta do consulente é: "${question}"
@@ -76,8 +80,6 @@ export const generateTarotReading = async (req, res) => {
       // Este prompt já usa question.name1 e question.name2
       prompt = `
       Aja como uma taróloga especialista em dinâmicas de relacionamento, com uma abordagem psicológica e empática.
-
-      ${TONE_DIRECTIVE}
       A análise é para a relação entre "${question.name1}" e "${question.name2}".
 
       A tiragem "Templo de Afrodite" revelou 7 cartas, seguindo a estrutura da imagem (1,2,3 para a primeira pessoa; 4,5,6 para a segunda).
@@ -123,8 +125,6 @@ export const generateTarotReading = async (req, res) => {
     } else if (spreadType === 'pathChoice') {
       prompt = `
       Aja como uma conselheira sábia e taróloga, guiando uma pessoa em um momento de decisão.
-
-      ${TONE_DIRECTIVE}
       O consulente está em dúvida entre dois caminhos:
       - Caminho 1: "${question.path1}"
       - Caminho 2: "${question.path2}"
@@ -171,8 +171,6 @@ export const generateTarotReading = async (req, res) => {
     } else if (spreadType === 'celticCross') {
      prompt = `
        Aja como uma taróloga experiente com uma profunda abordagem psicológica e terapêutica.
-
-       ${TONE_DIRECTIVE}
        A pergunta do consulente é: "${question}".
        A tiragem da Cruz Celta revelou as seguintes 10 cartas:
 
@@ -320,3 +318,4 @@ export const getDidacticMeaning = async (req, res) => {
     res.status(500).json({ error: 'Falha ao obter significado da carta.' });
   }
 };
+```

@@ -7,7 +7,7 @@ const TAROT_DECK = [
   { id: 'fool', name: 'O Louco' }, { id: 'magician', name: 'O Mago' },
   { id: 'high_priestess', name: 'A Sacerdotisa' }, { id: 'empress', name: 'A Imperatriz' },
   { id: 'emperor', name: 'O Imperador' }, { id: 'hierophant', name: 'O Hierofante' },
-  { id: 'lovers', name: 'Os Enamorados' }, { id: 'chariot', name: 'O Carro' },
+  { id: 'lovers', name: 'Os Amantes' }, { id: 'chariot', name: 'O Carro' },
   { id: 'strength', name: 'A Força' }, { id: 'hermit', name: 'O Eremita' },
   { id: 'wheel', name: 'A Roda da Fortuna' }, { id: 'justice', name: 'A Justiça' },
   { id: 'hanged_man', name: 'O Enforcado' }, { id: 'death', name: 'A Morte' },
@@ -59,7 +59,8 @@ Responda em JSON exato, sem markdown, com estes campos:
 {
   "nome_do_dia": "Um nome poético curto pra este dia (3 a 5 palavras), inspirado na carta, tipo um título — não repita o nome da carta",
   "mensagem": "Mensagem oracular curta (3-4 frases) em português, direta, sem mencionar o nome da carta explicitamente. Foque em energia, ação e intenção para o dia. Sem fatalismo.",
-  "intencao_pratica": "Uma frase curta e concreta — algo que a pessoa pode literalmente fazer hoje pra usar essa energia."
+  "intencao_pratica": "Uma frase curta e concreta — algo que a pessoa pode literalmente fazer hoje pra usar essa energia.",
+  "energia_evitar": "Uma frase curta sobre o que evitar hoje — um comportamento, reação ou armadilha ligada à sombra dessa carta."
 }
 Responda APENAS o JSON.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
