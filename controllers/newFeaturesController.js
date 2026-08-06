@@ -24,7 +24,7 @@ export const getDailyOracle = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('daily_oracle.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };
 
@@ -44,7 +44,7 @@ export const getCompatibility = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('compatibility.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };
 
@@ -60,7 +60,7 @@ export const getTransits = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('transits.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };
 
@@ -76,7 +76,7 @@ export const postIchingActive = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('iching_active.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };
 
@@ -89,7 +89,7 @@ export const getIchingActiveList = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('iching_active_list.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };
 
@@ -102,6 +102,6 @@ export const getYearMap = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (err) {
     logger.error('year_map.unhandled', { error: err.message });
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
   }
 };

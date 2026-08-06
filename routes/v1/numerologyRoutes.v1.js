@@ -7,6 +7,7 @@ import {
 } from '../../controllers/numerologyController.js';
 import { authRequired } from '../../middleware/authRequired.js';
 import { requireSupabaseBearerSession } from '../../middleware/requireSupabaseBearerSession.js';
+import { numerologyRateLimit } from '../../middleware/rateLimitByIp.js';
 import { validate } from '../../shared/validation/validate.js';
 import {
   numerologyPersonalBodySchema,
@@ -18,9 +19,9 @@ const router = Router();
 router.use(authRequired);
 router.use(requireSupabaseBearerSession);
 
-router.post('/readings', validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
-router.post('/personal', validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
-router.post('/weekly', validate(numerologyWeeklyBodySchema), getOrCalculateWeeklyNumerology);
+router.post('/readings', numerologyRateLimit, validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
+router.post('/personal', numerologyRateLimit, validate(numerologyPersonalBodySchema), getOrCalculateNumerology);
+router.post('/weekly', numerologyRateLimit, validate(numerologyWeeklyBodySchema), getOrCalculateWeeklyNumerology);
 router.delete('/readings/current', resetNumerologyReading);
 router.delete('/personal/current', resetNumerologyReading);
 

@@ -27,7 +27,7 @@ export const getOrCalculateNumerology = async (req, res) => {
     if (error?.code === 'LLM_LOCATION_UNSUPPORTED') {
       return res.status(503).json({ error: 'Serviço de IA indisponível na localização configurada.' });
     }
-    return res.status(500).json({ error: error.message || 'Falha interna ao processar numerologia.' });
+    return res.status(500).json({ error: 'Falha interna ao processar numerologia.' });
   }
 };
 
@@ -42,7 +42,7 @@ export const resetNumerologyReading = async (req, res) => {
     return res.status(result.status).json(result.body);
   } catch (error) {
     logger.error('numerology.reset.unhandled', { error: error.message, requestId: req.requestId });
-    return res.status(500).json({ error: error.message || 'Falha ao resetar.' });
+    return res.status(500).json({ error: 'Falha ao resetar.' });
   }
 };
 
@@ -69,6 +69,6 @@ export const getOrCalculateWeeklyNumerology = async (req, res) => {
     if (error?.code === 'LLM_LOCATION_UNSUPPORTED') {
       return res.status(503).json({ error: 'Serviço de IA indisponível na localização configurada.' });
     }
-    return res.status(500).json({ error: error.message || 'Falha ao gerar numerologia semanal.' });
+    return res.status(500).json({ error: 'Falha ao gerar numerologia semanal.' });
   }
 };

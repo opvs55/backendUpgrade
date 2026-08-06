@@ -1,15 +1,20 @@
 import { AppError } from '../shared/http/AppError.js';
 import { ERROR_CODES } from '../shared/http/errorCodes.js';
 import { supabaseUserClient } from '../config/supabaseClient.js';
+import { logger } from '../shared/logging/logger.js';
 
+// errorHandler.js encaminha message/details de qualquer AppError direto pro
+// cliente — antes isso incluía o erro cru do Postgrest (nomes de tabela,
+// coluna, constraint). Agora o detalhe fica só no log do servidor.
 const buildSupabaseError = (operation, error) => {
   const code = error?.code || 'SUPABASE_UNKNOWN';
   const message = error?.message || 'Erro desconhecido ao acessar oracle_weekly_modules.';
 
-  return new AppError(`Falha no Supabase (${operation}) [${code}]: ${message}`, {
+  logger.error('oracle_weekly_module.supabase_error', { operation, code, message });
+
+  return new AppError('Falha ao acessar dados do oráculo semanal.', {
     code: ERROR_CODES.INTERNAL_ERROR,
     status: 500,
-    details: [{ operation, code, message }],
   });
 };
 
