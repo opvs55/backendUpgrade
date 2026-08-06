@@ -4,9 +4,13 @@ import { extractJsonFromText } from '../../utils/llmResponse.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 import { ichingOutputSchema } from '../../shared/validation/iching.schema.js';
-import { sendSuccess } from '../../shared/http/response.js';
-
 export const generateIchingReadingData = async (payload) => {
+  if (!genAI) {
+    throw new AppError('Serviço de IA temporariamente indisponível. Configure a API key do provedor.', {
+      code: ERROR_CODES.SERVICE_UNAVAILABLE,
+      status: 503,
+    });
+  }
   try {
     const normalizedPayload = {
       ...payload,
@@ -51,14 +55,5 @@ SAÍDA (JSON EXATO)
       status: 500,
       details: error?.issues || [error?.message],
     });
-  }
-};
-
-export const createIchingReading = async (req, res, next) => {
-  try {
-    const data = await generateIchingReadingData(req.body);
-    return sendSuccess(res, { data, requestId: req.requestId, status: 200 });
-  } catch (error) {
-    return next(error);
   }
 };

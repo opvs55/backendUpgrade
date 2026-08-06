@@ -237,7 +237,7 @@ export const generateTarotReading = async (req, res) => {
         return res.status(200).json({ interpretationType: 'structured', data: jsonData });
       } catch (e) {
         console.error("LOG: Falha ao extrair/parse JSON no Tarot Controller.", { error: e.message, rawText });
-        return res.status(200).json({ interpretationType: 'simple', data: { mainInterpretation: "Erro formatando: " + rawText, cardInterpretations: [] } });
+        return res.status(502).json({ error: 'A IA retornou uma resposta em formato inesperado. Tente novamente.' });
       }
     } else {
       // Este 'else' agora é apenas um fallback extremo

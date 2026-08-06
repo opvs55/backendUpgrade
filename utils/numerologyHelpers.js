@@ -2,6 +2,9 @@
 
 // Função auxiliar para reduzir números na numerologia (sem alterações)
 export const reduceNumber = (num) => {
+  if (!Number.isFinite(num)) {
+    throw new Error(`reduceNumber recebeu um valor nao numerico: ${num}`);
+  }
   let numStr = String(num);
   if (numStr === '11' || numStr === '22' || numStr === '33') {
     return parseInt(numStr, 10);

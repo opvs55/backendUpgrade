@@ -36,6 +36,10 @@ export const getCompatibility = async (req, res) => {
     if (!name1 || !birthDate1 || !name2 || !birthDate2) {
       return res.status(400).json({ error: 'Forneça name1, birthDate1, name2 e birthDate2.' });
     }
+    const dateFormat = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateFormat.test(birthDate1) || !dateFormat.test(birthDate2)) {
+      return res.status(400).json({ error: 'birthDate1 e birthDate2 devem estar no formato YYYY-MM-DD.' });
+    }
     const result = await calculateCompatibility({ userId: ctx.userId, supabase: ctx.supabase, name1, birthDate1, name2, birthDate2 });
     return res.status(result.status).json(result.body);
   } catch (err) {
@@ -49,7 +53,9 @@ export const getTransits = async (req, res) => {
     const ctx = await resolveCtx(req, res);
     if (!ctx) return;
     const { birthDate, transitDate } = req.body;
-    if (!birthDate) return res.status(400).json({ error: 'Forneça birthDate (YYYY-MM-DD).' });
+    if (!birthDate || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+      return res.status(400).json({ error: 'Forneça birthDate no formato YYYY-MM-DD.' });
+    }
     const result = await fetchOrCreateTransit({ userId: ctx.userId, supabase: ctx.supabase, birthDate, transitDate });
     return res.status(result.status).json(result.body);
   } catch (err) {

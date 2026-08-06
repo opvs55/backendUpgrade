@@ -4,8 +4,6 @@ import { extractJsonFromText } from '../../utils/llmResponse.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 import { runesOutputSchema } from '../../shared/validation/runes.schema.js';
-import { sendSuccess } from '../../shared/http/response.js';
-
 const buildRunesList = (payload) => {
   if (Array.isArray(payload.runes) && payload.runes.length) {
     return payload.runes;
@@ -15,6 +13,12 @@ const buildRunesList = (payload) => {
 };
 
 export const generateRunesReadingData = async (payload) => {
+  if (!genAI) {
+    throw new AppError('Serviço de IA temporariamente indisponível. Configure a API key do provedor.', {
+      code: ERROR_CODES.SERVICE_UNAVAILABLE,
+      status: 503,
+    });
+  }
   try {
     const normalizedPayload = {
       ...payload,
@@ -59,14 +63,5 @@ SAÍDA (JSON EXATO)
       status: 500,
       details: error?.issues || [error?.message],
     });
-  }
-};
-
-export const createRunesReading = async (req, res, next) => {
-  try {
-    const data = await generateRunesReadingData(req.body);
-    return sendSuccess(res, { data, requestId: req.requestId, status: 200 });
-  } catch (error) {
-    return next(error);
   }
 };
