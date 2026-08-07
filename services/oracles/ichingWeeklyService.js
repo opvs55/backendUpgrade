@@ -106,9 +106,29 @@ export const generateIchingWeekly = async (userId, input = {}, accessToken) => {
       error_message: null,
     };
 
-    const saved = existing
-      ? await updateOracleWeeklyModuleById(existing.id, payload, accessToken)
-      : await saveOracleWeeklyModule(payload, accessToken);
+    let saved;
+    try {
+      saved = existing
+        ? await updateOracleWeeklyModuleById(existing.id, payload, accessToken)
+        : await saveOracleWeeklyModule(payload, accessToken);
+    } catch (saveError) {
+      // Corrida: outra requisição já criou o registro desta semana enquanto
+      // gerávamos (ex.: duplo clique) — usa a que ganhou em vez de falhar.
+      if (saveError?.pgCode === '23505') {
+        const race = await getWeeklyModule(userId, weekStart, ORACLE_TYPE, accessToken);
+        if (race) {
+          return {
+            week_start: weekStart,
+            week_ref: weekRef,
+            cached: true,
+            oracle_type: ORACLE_TYPE,
+            module: race,
+            output: withLines(race.output_payload || {}, { userId, weekRef, question: race?.input_payload?.question }),
+          };
+        }
+      }
+      throw saveError;
+    }
 
     return {
       week_start: weekStart,

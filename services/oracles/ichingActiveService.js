@@ -1,4 +1,5 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 import { extractJsonFromText } from '../../utils/llmResponse.js';
 import { logger } from '../../shared/logging/logger.js';
 
@@ -53,7 +54,7 @@ Responda com JSON exato (sem markdown):
   "themes": ["tema1", "tema2", "tema3"]
 }`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
-      const result = await model.generateContent(prompt);
+      const result = await generateWithRetry(model, prompt);
       const text = result.response.text();
       resultPayload = extractJsonFromText(text);
     } catch (err) {

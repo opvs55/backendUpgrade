@@ -1,5 +1,6 @@
 // controllers/tarotController.js
 import { genAI, geminiModelName } from '../config/gemini.js'; // Importa o cliente configurado
+import { generateWithRetry } from '../utils/geminiRetry.js';
 
 // Direção de tom compartilhada pelas 4 tiragens: sem ela, o Gemini responde
 // genérico demais (hedged, sem abertura de impacto) — isso é o que fazia a
@@ -220,7 +221,7 @@ export const generateTarotReading = async (req, res) => {
 
     // Chama a IA
     const model = genAI.getGenerativeModel({ model: geminiModelName, generationConfig });
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(model, prompt);
     const rawText = result.response.text();
     
 
@@ -275,7 +276,7 @@ export const getChatResponse = async (req, res) => {
     `;
 
     const model = genAI.getGenerativeModel({ model: geminiModelName });
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(model, prompt);
     const aiResponse = result.response.text();
     res.status(200).json({ aiResponse });
 
@@ -308,7 +309,7 @@ export const getDidacticMeaning = async (req, res) => {
     `;
 
     const model = genAI.getGenerativeModel({ model: geminiModelName });
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(model, prompt);
     const didacticText = result.response.text();
     res.status(200).json({ didacticText });
 

@@ -9,6 +9,7 @@ import {
   postIchingActive,
   getIchingActiveList,
   getYearMap,
+  postWeeklyCardMessage,
 } from '../../controllers/newFeaturesController.js';
 
 const router = Router();
@@ -31,5 +32,8 @@ router.post('/numerology/transits', featuresGenerateRateLimit, getTransits);
 // I Ching Ativo
 router.post('/iching/active', featuresGenerateRateLimit, postIchingActive);
 router.get('/iching/active', getIchingActiveList);
+
+// Carta da Semana (mensagem gerada por IA — sorteio em si é client-side)
+router.post('/weekly-card/message', featuresGenerateRateLimit, postWeeklyCardMessage);
 
 export default router;

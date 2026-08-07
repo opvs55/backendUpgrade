@@ -1,6 +1,7 @@
 import { reduceNumber, lifePathMeanings } from '../../utils/numerologyHelpers.js';
 import { genAI, geminiModelName } from '../../config/gemini.js';
 import { logger } from '../../shared/logging/logger.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 
 const calcPersonalYear = (birthDate, targetDate = new Date()) => {
   const [, bMonth, bDay] = birthDate.split('-').map(Number);
@@ -61,7 +62,7 @@ export const fetchOrCreateTransit = async ({ userId, supabase, birthDate, transi
 
 Escreva uma orientação para hoje (2-3 frases), prática e positiva. Sem mencionar os números explicitamente. Responda só o texto.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
-      const result = await model.generateContent(prompt);
+      const result = await generateWithRetry(model, prompt);
       aiNarrative = result.response.text()?.trim() || null;
     } catch (err) {
       logger.warn('transits.ai_failed', { userId, error: err?.message });

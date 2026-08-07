@@ -1,4 +1,5 @@
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
 import { normalizeCentralFinalReading } from '../../shared/http/centralReadingContract.js';
@@ -142,7 +143,7 @@ ${JSON.stringify(distilled, null, 2)}`;
 
   try {
     const model = genAI.getGenerativeModel({ model: geminiModelName });
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(model, prompt);
     const text = result.response.text();
     return sanitizeReading(extractJsonFromText(text));
   } catch (error) {

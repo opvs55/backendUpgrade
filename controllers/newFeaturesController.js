@@ -4,6 +4,7 @@ import { calculateCompatibility } from '../services/numerology/compatibilityServ
 import { fetchOrCreateTransit } from '../services/numerology/transitsService.js';
 import { createActiveIchingReading, getIchingActiveHistory } from '../services/oracles/ichingActiveService.js';
 import { fetchOrCreateYearMap } from '../services/tarot/yearMapService.js';
+import { generateWeeklyCardMessage } from '../services/oracles/weeklyCardMessageService.js';
 import { logger } from '../shared/logging/logger.js';
 
 const resolveCtx = async (req, res) => {
@@ -103,5 +104,23 @@ export const getYearMap = async (req, res) => {
   } catch (err) {
     logger.error('year_map.unhandled', { error: err.message });
     return res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
+  }
+};
+
+// Mensagem curta da Carta da Semana — endpoint sem estado (não toca no
+// banco), só exige login pra manter consistente com o resto das rotas de
+// IA. Repassa erro pro errorHandler central em vez de formatar aqui.
+export const postWeeklyCardMessage = async (req, res, next) => {
+  try {
+    const ctx = await resolveCtx(req, res);
+    if (!ctx) return;
+    const { cardName } = req.body;
+    if (!cardName || typeof cardName !== 'string') {
+      return res.status(400).json({ error: 'Forneça cardName.' });
+    }
+    const result = await generateWeeklyCardMessage({ cardName });
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
   }
 };

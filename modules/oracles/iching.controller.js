@@ -1,5 +1,6 @@
 // modules/oracles/iching.controller.js
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 import { extractJsonFromText } from '../../utils/llmResponse.js';
 import { AppError } from '../../shared/http/AppError.js';
 import { ERROR_CODES } from '../../shared/http/errorCodes.js';
@@ -39,7 +40,7 @@ SAÍDA (JSON EXATO)
 }`;
 
     const model = genAI.getGenerativeModel({ model: geminiModelName });
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(model, prompt);
     const rawText = result.response.text();
     const parsed = extractJsonFromText(rawText);
     return ichingOutputSchema.parse(parsed);

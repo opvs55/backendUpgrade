@@ -12,10 +12,14 @@ const buildSupabaseError = (operation, error) => {
 
   logger.error('oracle_weekly_module.supabase_error', { operation, code, message });
 
-  return new AppError('Falha ao acessar dados do oráculo semanal.', {
+  const appError = new AppError('Falha ao acessar dados do oráculo semanal.', {
     code: ERROR_CODES.INTERNAL_ERROR,
     status: 500,
   });
+  // Código cru do Postgrest, só pra quem chama poder checar corrida
+  // (23505) programaticamente — nunca é enviado ao cliente.
+  appError.pgCode = code;
+  return appError;
 };
 
 const getClient = (accessToken) => {

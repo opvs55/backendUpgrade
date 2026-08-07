@@ -5,6 +5,7 @@ import {
   buildUniversalMonthEnergy,
 } from '../../utils/numerologyHelpers.js';
 import { genAI, geminiModelName } from '../../config/gemini.js';
+import { generateWithRetry } from '../../utils/geminiRetry.js';
 import { getWeekRef } from '../../utils/week.js';
 import {
   getNumerologyWeeklyByUserAndWeekStart,
@@ -75,7 +76,7 @@ export const fetchOrCreatePersonalNumerology = async ({ userId, supabase, birthD
         `;
 
         const model = genAI.getGenerativeModel({ model: geminiModelName });
-        const result = await model.generateContent(birthdayPrompt);
+        const result = await generateWithRetry(model, birthdayPrompt);
         let responseText = result.response?.text();
 
         if (responseText) {
@@ -219,7 +220,7 @@ export const fetchOrCreateWeeklyNumerology = async ({
       const lpExcerpt = (lifePathMeanings[lifePathNumber] || '').slice(0, 500);
       const prompt = `Você é numeróloga em português brasileiro. Escreva 2 parágrafos curtos (sem fatalismo) sobre a energia desta semana (${weekRef}) para alguém com caminho de vida ${lifePathNumber}. Contexto: vibração mensal ${numerologyTime.month_energy}; combinação sugerida da semana ${personalWeekVibe}. Referência do caminho (resumo): ${lpExcerpt} Responda só o texto, sem JSON.`;
       const model = genAI.getGenerativeModel({ model: geminiModelName });
-      const result = await model.generateContent(prompt);
+      const result = await generateWithRetry(model, prompt);
       narrative = result.response.text()?.trim() || null;
     } catch (aiErr) {
       logger.warn('numerology.weekly.ai_failed', { userId, error: aiErr?.message });
