@@ -5,6 +5,7 @@ import numerologyRoutes from './numerologyRoutes.v1.js';
 import oracleRoutes from '../oracleRoutes.js';
 import unifiedReadingRoutes from '../unifiedReadingRoutes.js';
 import newFeaturesRoutes from './newFeaturesRoutes.js';
+import journalRoutes from './journalRoutes.js';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/numerology', numerologyRoutes);
 router.use('/oracles', oracleRoutes);
 router.use('/unified-readings', unifiedReadingRoutes);
 router.use('/features', newFeaturesRoutes);
+router.use('/journal', journalRoutes);
 
 export default router;
